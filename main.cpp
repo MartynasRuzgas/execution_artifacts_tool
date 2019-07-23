@@ -166,6 +166,22 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
 	nk_d3d9_font_stash_begin(&atlas);
 	nk_d3d9_font_stash_end();}
 
+	static std::string output_str = "Nothing here yet....";
+	static int         cur_len = output_str.length();
+	static bool        interactable = true;
+	static bool        prev_interactable = interactable;
+
+	auto copy_to_clipboard = [&](std::string& data) {
+		if (OpenClipboard(wnd) && EmptyClipboard()) {
+			if (HGLOBAL hmem = GlobalAlloc(GMEM_MOVEABLE, data.size())) {
+				memcpy(GlobalLock(hmem), data.data(), data.size());
+				SetClipboardData(CF_TEXT, hmem);
+				GlobalFree(hmem);
+			}
+			CloseClipboard();
+		}
+	};
+
 	bg.r = 0.10f, bg.g = 0.18f, bg.b = 0.24f, bg.a = 1.0f;
 	while (running)
 	{
@@ -183,22 +199,6 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
 		/* GUI */
 		if (nk_begin(ctx, "Execution Artifacts Tool", nk_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT), NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR))
 		{
-			static std::string output_str = "Nothing here yet....";
-			static int         cur_len    = output_str.length();
-			static bool        interactable = true;
-			static bool        prev_interactable = interactable;
-
-			auto copy_to_clipboard = [&](std::string& data) {
-				if (OpenClipboard(wnd) && EmptyClipboard()) {
-					if (HGLOBAL hmem = GlobalAlloc(GMEM_MOVEABLE, data.size())) {
-						memcpy(GlobalLock(hmem), data.data(), data.size());
-						SetClipboardData(CF_TEXT, hmem);
-						GlobalFree(hmem);
-					}
-					CloseClipboard();
-				}
-			};
-
 			/* Check if the interactable state was changed back on by UsnJournal query. */
 			if (prev_interactable != interactable && interactable == true) {
 				copy_to_clipboard(output_str);
@@ -287,5 +287,7 @@ Note: It may take up to a minute to extract all data."
 	if (deviceEx)IDirect3DDevice9Ex_Release(deviceEx);
 	else IDirect3DDevice9_Release(device);
 	UnregisterClassW(wc.lpszClassName, wc.hInstance);
+	if (!interactable)
+		exit(0); /* This is not ideal but gets the job done. */
 	return 0;
 }
