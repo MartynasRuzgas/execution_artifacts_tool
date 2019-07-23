@@ -9,7 +9,7 @@
 #include <string>
 #include <time.h>
 
-#define WINDOW_WIDTH 601
+#define WINDOW_WIDTH 821
 #define WINDOW_HEIGHT 600
 
 #define NK_INCLUDE_FIXED_TYPES
@@ -185,6 +185,8 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
 		{
 			static std::string output_str = "Nothing here yet....";
 			static int         cur_len    = output_str.length();
+			static bool        interactable = true;
+			static bool        prev_interactable = interactable;
 
 			auto copy_to_clipboard = [&](std::string& data) {
 				if (OpenClipboard(wnd) && EmptyClipboard()) {
@@ -197,56 +199,62 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
 				}
 			};
 
-			nk_layout_row_dynamic(ctx, 25, 5);
-			if (nk_button_label(ctx, "Usn Journal")) {
+			/* Check if the interactable state was changed back on by UsnJournal query. */
+			if (prev_interactable != interactable && interactable == true) {
+				copy_to_clipboard(output_str);
+				output_str = "Read " + std::to_string(output_str.size() / 1024 / 1024) + "MB from UsnJournal..";
+			}
+			prev_interactable = interactable;
+
+			nk_layout_row_dynamic(ctx, 25, 7);
+			if (nk_button_label(ctx, "Usn Journal") && interactable) {
 				const char warning_message[] = {
-					"Due to the size of the Usn Journal all data from all mounted drives will\n\
+					"Due to the size of the Usn Journal, all data from all mounted drives will\n\
 be copied to the clipboard and not displayed, do you wish to continue?\n\
 Note: It may take up to a minute to extract all data."
 				};
 				if (MessageBoxA(wnd, warning_message, "Warning", MB_ICONWARNING | MB_OKCANCEL) == 1) {
-					output_str = ea::get_usn_journal_info();
-					copy_to_clipboard(output_str);
-					output_str = "Retrieved " + std::to_string(output_str.size() / 1024) + "KB from Usn Journal..";
-					cur_len = output_str.length();;
+					interactable = false;
+					ea::get_usn_journal_info_deferred(output_str, interactable);
 				}
 			}
 
-			if (nk_button_label(ctx, "UserAssist")) {
+			if (nk_button_label(ctx, "UserAssist") && interactable) {
 				output_str = ea::get_user_assist_info();
-				cur_len = output_str.length();
 			}
 
-			if (nk_button_label(ctx, "AppCompatFlags")) {
+			if (nk_button_label(ctx, "AppCompatFlags") && interactable) {
 				output_str = ea::get_app_compat_flags_info();
-				cur_len = output_str.length();
 			}
 
-			if (nk_button_label(ctx, "MUI Cache")) {
+			if (nk_button_label(ctx, "MUI Cache") && interactable) {
 				output_str = ea::get_mui_cache_info();
-				cur_len = output_str.length();
 			}
 
-			if (nk_button_label(ctx, "Jump Lists")) {
+			if (nk_button_label(ctx, "Jump Lists") && interactable) {
 				output_str = ea::get_jump_lists_info();
-				cur_len = output_str.length();
 			}
+
+			if (nk_button_label(ctx, "RecentApps") && interactable) {
+				output_str = ea::get_recent_apps_info();
+			}
+
+			if (nk_button_label(ctx, "ShimCache") && interactable) {
+				output_str = ea::get_shim_cache_info();
+			}
+
+			cur_len = output_str.length();;
 
 			nk_layout_row_dynamic(ctx, 30, 1);
 			nk_label(ctx, "Output:", NK_TEXT_CENTERED);
 
-			nk_uint scroll_x, scroll_y;
-			nk_window_get_scroll(ctx, &scroll_x, &scroll_y);
-
-			//nk_layout_row_dynamic(ctx, 120, 1);
-			//nk_group_begin(ctx, "OutputGroup", 0);
 			nk_layout_row_dynamic(ctx, 492, 1);
-			nk_edit_string(ctx, NK_EDIT_SELECTABLE | NK_EDIT_MULTILINE | NK_EDIT_ALLOW_TAB | NK_EDIT_CLIPBOARD, output_str.data(), &cur_len, output_str.size(), nk_filter_default);
-			//nk_group_end(ctx);
+			nk_edit_string(ctx, NK_EDIT_SELECTABLE | NK_EDIT_MULTILINE | NK_EDIT_ALLOW_TAB | NK_EDIT_CLIPBOARD,
+				(interactable ? output_str.data() : (char*)"Querying UsnJournal...."), &cur_len,
+				(interactable ? output_str.size() : 24), nk_filter_default);
 
 			nk_layout_row_static(ctx, 25, 160, 1);
-
-			if (nk_button_label(ctx, "Copy to Clipboard")) {
+			if (nk_button_label(ctx, "Copy to Clipboard") && interactable) {
 				copy_to_clipboard(output_str);
 			}
 		}

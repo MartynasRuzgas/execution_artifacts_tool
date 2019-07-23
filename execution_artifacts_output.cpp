@@ -11,6 +11,7 @@
 #include <vector>
 #include <sstream>
 #include <ctime>
+#include <thread>
 #include <chrono>
 
 namespace ea {
@@ -39,6 +40,10 @@ namespace ea {
 
 		inline int64_t filetime_to_unix_timestamp(int64_t filetime) {
 			return filetime / 10000000.0 - 11644473600.0;
+		}
+
+		inline int64_t filetime_to_unix_timestamp(FILETIME filetime) {
+			return filetime_to_unix_timestamp(*(int64_t*)&filetime);
 		}
 
 	} // namespace detail
@@ -89,7 +94,7 @@ namespace ea {
 		ss << "Dumping ShimCache, Timestamp: " << std::ctime(&now) << std::endl;
 
 		ea::enum_shim_cache([](ea::shim_entry_t& entry) {
-
+			entry.last_modification_time
 		});
 
 		return {}; // unimpl.
@@ -138,24 +143,46 @@ namespace ea {
 		return ss.str();
 	}
 
-	std::string get_usn_journal_info()
+	void get_usn_journal_info_deferred(std::string& result, bool& completed)
 	{
-		std::stringstream ss;
-		auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-		ss << "Dumping UsnJournal, Timestamp: " << std::ctime(&now) << std::endl;
+		// This takes an unreasonably long time without multithreading when
+		// multiple drives are mounted on the system.
+		std::thread main_thread([&]() {
+			std::stringstream ss;
+			auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+			ss << "Dumping UsnJournal, Timestamp: " << std::ctime(&now) << std::endl;
 
-		ntw::obj::process_ref{}.enum_fixed_drives([&](auto drive_idx) {
-			ss << "NTFS Journal data for drive " << (char)(drive_idx + 'A') << ":\\" << std::endl;
-			ea::enum_drive_usn_journal(drive_idx, [&](ea::usn_journal_entry_t& entry) {
-				auto interact_time_utf = detail::filetime_to_unix_timestamp(entry.interact_time_utf);
-				ss <<
-					"    Time: [" << (entry.interact_time_utf ? detail::format_time(interact_time_utf) : "0") <<
-					"] Reason: [0x" << std::hex << entry.reason << "] " <<
-					std::string(entry.path.begin(), entry.path.end()) << std::endl;		
+			int drive_count = 0;
+			std::vector<std::pair<std::stringstream, int>> sstreams;
+			ntw::obj::process_ref{}.enum_fixed_drives([&](auto drive_idx) {
+				sstreams.emplace_back(std::make_pair(std::stringstream(), drive_idx));
+				drive_count++;
 			});
-		});
 
-		return ss.str();
+			for (int i = 0; i < drive_count; i++) {
+				std::thread worked_thread([&, i]() {
+					auto&[stream, drive_index] = sstreams[i];
+					stream << "NTFS Journal data for drive " << (char)(drive_index + 'A') << ":\\" << std::endl;
+					ea::enum_drive_usn_journal(drive_index, [&](ea::usn_journal_entry_t& entry) {
+						auto interact_time_utf = detail::filetime_to_unix_timestamp(entry.interact_time_utf);
+						sstreams[i].first <<
+							"    Time: [" << (entry.interact_time_utf ? detail::format_time(interact_time_utf) : "0") <<
+							"] Reason: [0x" << std::hex << entry.reason << "] " <<
+							std::string(entry.path.begin(), entry.path.end()) << std::endl;
+					});
+					drive_count--;
+				});
+				worked_thread.detach();
+			}
+
+			while (drive_count != 0)
+				Sleep(200);
+
+			for (auto&[stream, drive_index] : sstreams)
+				result += stream.str();
+			completed = true;
+		});
+		main_thread.detach();
 	}
 
 } // namespace ea
