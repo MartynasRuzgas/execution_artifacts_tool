@@ -207,7 +207,7 @@ Note: It may take up to a minute to extract all data."
 				if (MessageBoxA(wnd, warning_message, "Warning", MB_ICONWARNING | MB_OKCANCEL) == 1) {
 					output_str = ea::get_usn_journal_info();
 					copy_to_clipboard(output_str);
-					output_str = "Retrieved " + std::to_string(output_str.size()) + " bytes from Usn Journal..";
+					output_str = "Retrieved " + std::to_string(output_str.size() / 1024) + "KB from Usn Journal..";
 					cur_len = output_str.length();;
 				}
 			}

@@ -37,11 +37,23 @@ namespace ea {
 			return ss.str();
 		}
 
+		inline int64_t filetime_to_unix_timestamp(int64_t filetime) {
+			return filetime / 10000000.0 - 11644473600.0;
+		}
+
 	} // namespace detail
 
 	std::string get_app_compat_flags_info()
 	{
-		return {}; // unimpl.
+		std::stringstream ss;
+		auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		ss << "Dumping AppCompatFlags, Timestamp: " << std::ctime(&now) << std::endl;
+
+		ea::enum_app_compat_flag_paths([&](std::wstring_view path) {
+			ss << std::string(path.begin(), path.end()) << std::endl;
+		});
+
+		return ss.str();
 	}
 
 	std::string get_jump_lists_info()
@@ -52,11 +64,55 @@ namespace ea {
 
 	std::string get_mui_cache_info()
 	{
-		return {}; // unimpl.
+		wchar_t buffer[256];
+		auto    end = buffer;
+		ea::acquire_and_format_sid(end);
+		std::wstring_view sid(buffer, end - buffer);
+
+		std::stringstream ss;
+		auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		ss << "Dumping MUI Cache, Timestamp: " << std::ctime(&now) << std::endl;
+
+		ea::enum_mui_cache(sid, [&](ea::mui_cache_entry&& entry) {
+			ss <<
+				"[Path = " << std::string(entry.path.begin(), entry.path.end()) <<
+				"] [Description = " << std::string(entry.description.begin(), entry.description.end()) << "]" << std::endl;
+		});
+
+		return ss.str();
 	}
 
 	std::string get_shim_cache_info()
 	{
+		std::stringstream ss;
+		auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		ss << "Dumping ShimCache, Timestamp: " << std::ctime(&now) << std::endl;
+
+		ea::enum_shim_cache([](ea::shim_entry_t& entry) {
+
+		});
+
+		return {}; // unimpl.
+	}
+
+	std::string get_recent_apps_info()
+	{
+		wchar_t buffer[256];
+		auto    end = buffer;
+		ea::acquire_and_format_sid(end);
+		std::wstring_view sid(buffer, end - buffer);
+
+		std::stringstream ss;
+		auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		ss << "Dumping RecentApps, Timestamp: " << std::ctime(&now) << std::endl;
+
+		ea::enum_recent_apps(sid, [](ea::recent_app& app) {
+			//std::wcout << "\n\nlaunch_count: " << app.launch_count()
+			//	<< "\nlast_access: " << app.last_access() << "\nid: " << app.id()
+			//	<< "\npath: " << app.path();
+			//int entry_count = 0;
+		});
+
 		return {}; // unimpl.
 	}
 
@@ -72,8 +128,7 @@ namespace ea {
 		ss << "Dumping UserAssist, Timestamp: " << std::ctime(&now) << std::endl;
 		ss << "[!] Note: Ran Count may not be 100\% valid." << std::endl;
 		ea::enum_user_assist(sid, [&ss](ea::user_assist_entry_t& entry) {
-			// Convert FILETIME to Unix time
-			auto last_execution_time = entry.last_execution_time / 10000000.0 - 11644473600.0;
+			auto last_execution_time = detail::filetime_to_unix_timestamp(entry.last_execution_time);
 			ss << 
 				"Ran Count: [" << entry.run_counter <<
 				"] Focus Time: [" << (entry.focus_time_had ? detail::format_time(entry.focus_time_had / 1000) : "0") <<
@@ -92,7 +147,7 @@ namespace ea {
 		ntw::obj::process_ref{}.enum_fixed_drives([&](auto drive_idx) {
 			ss << "NTFS Journal data for drive " << (char)(drive_idx + 'A') << ":\\" << std::endl;
 			ea::enum_drive_usn_journal(drive_idx, [&](ea::usn_journal_entry_t& entry) {
-				auto interact_time_utf = entry.interact_time_utf / 10000000.0 - 11644473600.0;
+				auto interact_time_utf = detail::filetime_to_unix_timestamp(entry.interact_time_utf);
 				ss <<
 					"    Time: [" << (entry.interact_time_utf ? detail::format_time(interact_time_utf) : "0") <<
 					"] Reason: [0x" << std::hex << entry.reason << "] " <<
