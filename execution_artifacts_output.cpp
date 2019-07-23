@@ -114,14 +114,21 @@ namespace ea {
 		auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 		ss << "Dumping RecentApps, Timestamp: " << std::ctime(&now) << std::endl;
 
-		ea::enum_recent_apps(sid, [](ea::recent_app& app) {
-			//std::wcout << "\n\nlaunch_count: " << app.launch_count()
-			//	<< "\nlast_access: " << app.last_access() << "\nid: " << app.id()
-			//	<< "\npath: " << app.path();
-			//int entry_count = 0;
+		ea::enum_recent_apps(sid, [&](ea::recent_app& entry) {
+			auto last_access = detail::filetime_to_unix_timestamp(entry.last_access());
+			ss <<
+				"Launch Count: [" << entry.launch_count() <<
+				"], Last Access Time: [" << (entry.last_access() ? detail::format_time(last_access) : "0") << "], " <<
+				std::string(entry.path().begin(), entry.path().end()) << std::endl;
+
+			entry.enum_recent_items([&](ea::recent_app::recent_item& item_entry) {
+				auto item_last_access = detail::filetime_to_unix_timestamp(item_entry.last_access());
+				ss << "    Last Acccess Time: [" << (item_entry.last_access() ? detail::format_time(item_last_access) : "0") << "], " <<
+					std::string(item_entry.display_name().begin(), item_entry.display_name().end()) << std::endl;
+			});
 		});
 
-		return {}; // unimpl.
+		return ss.str();
 	}
 
 	std::string get_user_assist_info()
