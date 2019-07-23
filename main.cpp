@@ -206,7 +206,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
 			}
 			prev_interactable = interactable;
 
-			nk_layout_row_dynamic(ctx, 25, 7);
+			nk_layout_row_dynamic(ctx, 25, 6);
 			if (nk_button_label(ctx, "Usn Journal") && interactable) {
 				const char warning_message[] = {
 					"Due to the size of the Usn Journal, all data from all mounted drives will\n\
@@ -229,10 +229,6 @@ Note: It may take up to a minute to extract all data."
 
 			if (nk_button_label(ctx, "MUI Cache") && interactable) {
 				output_str = ea::get_mui_cache_info();
-			}
-
-			if (nk_button_label(ctx, "Jump Lists") && interactable) {
-				output_str = ea::get_jump_lists_info();
 			}
 
 			if (nk_button_label(ctx, "RecentApps") && interactable) {

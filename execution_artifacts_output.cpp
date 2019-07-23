@@ -3,7 +3,6 @@
 #include <shim_cache.hpp>
 #include <usn_journal.hpp>
 #include <app_compat_flags.hpp>
-#include <jump_lists.hpp>
 #include <mui_cache.hpp>
 #include <user_assist.hpp>
 #include <sid.hpp>
@@ -59,12 +58,6 @@ namespace ea {
 		});
 
 		return ss.str();
-	}
-
-	std::string get_jump_lists_info()
-	{
-		ea::test_jump_lists();
-		return {}; // unimpl.
 	}
 
 	std::string get_mui_cache_info()
