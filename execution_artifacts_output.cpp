@@ -93,11 +93,14 @@ namespace ea {
 		auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 		ss << "Dumping ShimCache, Timestamp: " << std::ctime(&now) << std::endl;
 
-		ea::enum_shim_cache([](ea::shim_entry_t& entry) {
-			entry.last_modification_time
+		ea::enum_shim_cache([&](ea::shim_entry_t& entry) {
+			auto last_modification_time = detail::filetime_to_unix_timestamp(entry.last_modification_time);
+			ss <<
+				"Time: [" << (entry.last_modification_time.dwLowDateTime ? detail::format_time(last_modification_time) : "0") <<
+				"], " << std::string(entry.path.begin(), entry.path.end()) << std::endl;
 		});
 
-		return {}; // unimpl.
+		return ss.str();
 	}
 
 	std::string get_recent_apps_info()
@@ -136,8 +139,8 @@ namespace ea {
 			auto last_execution_time = detail::filetime_to_unix_timestamp(entry.last_execution_time);
 			ss << 
 				"Ran Count: [" << entry.run_counter <<
-				"] Focus Time: [" << (entry.focus_time_had ? detail::format_time(entry.focus_time_had / 1000) : "0") <<
-				"] Last Execution Time: [" << (entry.last_execution_time ? detail::format_time(last_execution_time) : "0") << "], " <<
+				"], Focus Time: [" << (entry.focus_time_had ? detail::format_time(entry.focus_time_had / 1000) : "0") <<
+				"], Last Execution Time: [" << (entry.last_execution_time ? detail::format_time(last_execution_time) : "0") << "], " <<
 				std::string(entry.name.begin(), entry.name.end()) << std::endl;
 		});
 		return ss.str();
@@ -167,7 +170,7 @@ namespace ea {
 						auto interact_time_utf = detail::filetime_to_unix_timestamp(entry.interact_time_utf);
 						sstreams[i].first <<
 							"    Time: [" << (entry.interact_time_utf ? detail::format_time(interact_time_utf) : "0") <<
-							"] Reason: [0x" << std::hex << entry.reason << "] " <<
+							"], Reason: [0x" << std::hex << entry.reason << "], " <<
 							std::string(entry.path.begin(), entry.path.end()) << std::endl;
 					});
 					drive_count--;
