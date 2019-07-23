@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
+#include <string>
 #include <time.h>
 
 #define WINDOW_WIDTH 601
@@ -183,36 +184,47 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
 		/* GUI */
 		if (nk_begin(ctx, "Execution Artifacts Tool", nk_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT), NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR))
 		{
+			static std::string output_str = "Nothing here....";
+			static int         cur_len    = output_str.length();
+
 			nk_layout_row_dynamic(ctx, 25, 5);
-			if (nk_button_label(ctx, "Usn Journal"))
-				fprintf(stdout, "button pressed\n");
+			if (nk_button_label(ctx, "Usn Journal")) {
+				output_str = ea::get_usn_journal_info();
+				cur_len = output_str.length();
+			}
 
-			if (nk_button_label(ctx, "UserAssist"))
-				fprintf(stdout, "button pressed\n");
+			if (nk_button_label(ctx, "UserAssist")) {
+				output_str = ea::get_user_assist_info();
+				cur_len = output_str.length();
+			}
 
-			if (nk_button_label(ctx, "AppCompatFlags"))
-				fprintf(stdout, "button pressed\n");
+			if (nk_button_label(ctx, "AppCompatFlags")) {
+				output_str = ea::get_app_compat_flags_info();
+				cur_len = output_str.length();
+			}
 
-			if (nk_button_label(ctx, "MUI Cache"))
-				fprintf(stdout, "button pressed\n");
+			if (nk_button_label(ctx, "MUI Cache")) {
+				output_str = ea::get_mui_cache_info();
+				cur_len = output_str.length();
+			}
 
-			if (nk_button_label(ctx, "Jump Lists"))
-				fprintf(stdout, "button pressed\n");
+			if (nk_button_label(ctx, "Jump Lists")) {
+				output_str = ea::get_jump_lists_info();
+				cur_len = output_str.length();
+			}
 
 			nk_layout_row_dynamic(ctx, 30, 1);
 			nk_label(ctx, "Output:", NK_TEXT_CENTERED);
 
 			nk_layout_row_dynamic(ctx, 492, 1);
-			static char buffer[128] = { 0 };
-			static int  cur_len = 0;
-			nk_edit_string(ctx, NK_EDIT_FIELD | NK_EDIT_EDITOR, buffer, &cur_len, sizeof(buffer), nk_filter_default);
+			nk_edit_string(ctx, NK_EDIT_FIELD | NK_EDIT_EDITOR, output_str.data(), &cur_len, output_str.size(), nk_filter_default);
 
 			nk_layout_row_static(ctx, 25, 160, 1);
 
 			if (nk_button_label(ctx, "Copy to Clipboard")) {
 				if (OpenClipboard(wnd) && EmptyClipboard()) {
-					if (HGLOBAL hmem = GlobalAlloc(GMEM_MOVEABLE, 128)) {
-						memcpy(GlobalLock(hmem), buffer, 128);
+					if (HGLOBAL hmem = GlobalAlloc(GMEM_MOVEABLE, output_str.size())) {
+						memcpy(GlobalLock(hmem), output_str.data(), output_str.size());
 						SetClipboardData(CF_TEXT, hmem);
 						GlobalFree(hmem);
 					}
