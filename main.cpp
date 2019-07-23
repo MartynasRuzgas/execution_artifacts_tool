@@ -1,6 +1,5 @@
 #define COBJMACROS
 #define WIN32_LEAN_AND_MEAN
-#define _CRT_SECURE_NO_WARNINGS
 
 #include <windows.h>
 #include <d3d9.h>
@@ -184,13 +183,33 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
 		/* GUI */
 		if (nk_begin(ctx, "Execution Artifacts Tool", nk_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT), NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR))
 		{
-			static std::string output_str = "Nothing here....";
+			static std::string output_str = "Nothing here yet....";
 			static int         cur_len    = output_str.length();
+
+			auto copy_to_clipboard = [&](std::string& data) {
+				if (OpenClipboard(wnd) && EmptyClipboard()) {
+					if (HGLOBAL hmem = GlobalAlloc(GMEM_MOVEABLE, data.size())) {
+						memcpy(GlobalLock(hmem), data.data(), data.size());
+						SetClipboardData(CF_TEXT, hmem);
+						GlobalFree(hmem);
+					}
+					CloseClipboard();
+				}
+			};
 
 			nk_layout_row_dynamic(ctx, 25, 5);
 			if (nk_button_label(ctx, "Usn Journal")) {
-				output_str = ea::get_usn_journal_info();
-				cur_len = output_str.length();
+				const char warning_message[] = {
+					"Due to the size of the Usn Journal all data from all mounted drives will\n\
+be copied to the clipboard and not displayed, do you wish to continue?\n\
+Note: It may take up to a minute to extract all data."
+				};
+				if (MessageBoxA(wnd, warning_message, "Warning", MB_ICONWARNING | MB_OKCANCEL) == 1) {
+					output_str = ea::get_usn_journal_info();
+					copy_to_clipboard(output_str);
+					output_str = "Retrieved " + std::to_string(output_str.size()) + " bytes from Usn Journal..";
+					cur_len = output_str.length();;
+				}
 			}
 
 			if (nk_button_label(ctx, "UserAssist")) {
@@ -216,20 +235,19 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
 			nk_layout_row_dynamic(ctx, 30, 1);
 			nk_label(ctx, "Output:", NK_TEXT_CENTERED);
 
+			nk_uint scroll_x, scroll_y;
+			nk_window_get_scroll(ctx, &scroll_x, &scroll_y);
+
+			//nk_layout_row_dynamic(ctx, 120, 1);
+			//nk_group_begin(ctx, "OutputGroup", 0);
 			nk_layout_row_dynamic(ctx, 492, 1);
-			nk_edit_string(ctx, NK_EDIT_FIELD | NK_EDIT_EDITOR, output_str.data(), &cur_len, output_str.size(), nk_filter_default);
+			nk_edit_string(ctx, NK_EDIT_SELECTABLE | NK_EDIT_MULTILINE | NK_EDIT_ALLOW_TAB | NK_EDIT_CLIPBOARD, output_str.data(), &cur_len, output_str.size(), nk_filter_default);
+			//nk_group_end(ctx);
 
 			nk_layout_row_static(ctx, 25, 160, 1);
 
 			if (nk_button_label(ctx, "Copy to Clipboard")) {
-				if (OpenClipboard(wnd) && EmptyClipboard()) {
-					if (HGLOBAL hmem = GlobalAlloc(GMEM_MOVEABLE, output_str.size())) {
-						memcpy(GlobalLock(hmem), output_str.data(), output_str.size());
-						SetClipboardData(CF_TEXT, hmem);
-						GlobalFree(hmem);
-					}
-					CloseClipboard();
-				}
+				copy_to_clipboard(output_str);
 			}
 		}
 		nk_end(ctx);

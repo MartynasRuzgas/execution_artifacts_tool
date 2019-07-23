@@ -13,6 +13,11 @@
 #include <ctime>
 #include <chrono>
 
+#define _SECOND ((int64_t) 10000000)
+#define _MINUTE (60 * _SECOND)
+#define _HOUR   (60 * _MINUTE)
+#define _DAY    (24 * _HOUR)
+
 namespace ea {
 
 	namespace detail {
