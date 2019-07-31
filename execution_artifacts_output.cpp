@@ -150,7 +150,7 @@ namespace ea {
 	{
 		// This takes an unreasonably long time without multithreading when
 		// multiple drives are mounted on the system.
-		std::thread main_thread([&]() {
+		std::thread([&]() {
 			std::stringstream ss;
 			auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 			ss << "Dumping UsnJournal, Timestamp: " << std::ctime(&now) << std::endl;
@@ -163,7 +163,7 @@ namespace ea {
 			});
 
 			for (int i = 0; i < drive_count; i++) {
-				std::thread worked_thread([&, i]() {
+				std::thread([&, i]() {
 					auto&[stream, drive_index] = sstreams[i];
 					stream << "NTFS Journal data for drive " << (char)(drive_index + 'A') << ":\\" << std::endl;
 					ea::enum_drive_usn_journal(drive_index, [&](ea::usn_journal_entry_t& entry) {
@@ -174,18 +174,17 @@ namespace ea {
 							std::string(entry.path.begin(), entry.path.end()) << std::endl;
 					});
 					drive_count--;
-				});
-				worked_thread.detach();
+				}).detach();
 			}
 
+			/* Wait until all drives are processed. */
 			while (drive_count != 0)
 				Sleep(200);
 
 			for (auto&[stream, drive_index] : sstreams)
 				result += stream.str();
 			completed = true;
-		});
-		main_thread.detach();
+		}).detach();
 	}
 
 } // namespace ea

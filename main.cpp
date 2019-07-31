@@ -31,6 +31,11 @@ IDirect3DDevice9* device;
 IDirect3DDevice9Ex* deviceEx;
 D3DPRESENT_PARAMETERS present;
 
+const char* g_usn_warning_message =
+"Due to the size of the Usn Journal, all data from all mounted drives will\n\
+be copied to the clipboard and not displayed, do you wish to continue?\n\
+Note: It may take up to a minute to extract all data.";
+
 LRESULT CALLBACK WindowProc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
 	switch (msg)
@@ -166,10 +171,12 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
 	nk_d3d9_font_stash_begin(&atlas);
 	nk_d3d9_font_stash_end();}
 
-	static std::string output_str = "Nothing here yet....";
-	static int         cur_len = output_str.length();
-	static bool        interactable = true;
-	static bool        prev_interactable = interactable;
+	/* Runtime vars */
+	std::string output_str = "Nothing here yet....";
+	std::string usn_journal_data = "";
+	int         cur_len = output_str.length();
+	bool        interactable = true;
+	bool        prev_interactable = interactable;
 
 	auto copy_to_clipboard = [&](std::string& data) {
 		if (OpenClipboard(wnd) && EmptyClipboard()) {
@@ -201,41 +208,43 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
 		{
 			/* Check if the interactable state was changed back on by UsnJournal query. */
 			if (prev_interactable != interactable && interactable == true) {
-				copy_to_clipboard(output_str);
-				output_str = "Read " + std::to_string(output_str.size() / 1024 / 1024) + "MB from UsnJournal..";
+				copy_to_clipboard(usn_journal_data);
+				output_str = "Read " + std::to_string(usn_journal_data.size() / 1024 / 1024) + "MB from UsnJournal..";
+				usn_journal_data = "";
 			}
 			prev_interactable = interactable;
 
+			/* Button wrapper to enable non-immediate operations with the interactable boolean. */
+			auto button = [&interactable, ctx](const char* name) {
+				return nk_button_label(ctx, name) && interactable;
+			};
+
 			nk_layout_row_dynamic(ctx, 25, 6);
-			if (nk_button_label(ctx, "Usn Journal") && interactable) {
-				const char warning_message[] = {
-					"Due to the size of the Usn Journal, all data from all mounted drives will\n\
-be copied to the clipboard and not displayed, do you wish to continue?\n\
-Note: It may take up to a minute to extract all data."
-				};
-				if (MessageBoxA(wnd, warning_message, "Warning", MB_ICONWARNING | MB_OKCANCEL) == 1) {
+			if (button("Usn Journal")) {
+				if (MessageBoxA(wnd, g_usn_warning_message, "Warning", MB_ICONWARNING | MB_OKCANCEL) == 1) {
 					interactable = false;
-					ea::get_usn_journal_info_deferred(output_str, interactable);
+					ea::get_usn_journal_info_deferred(usn_journal_data, interactable);
+					output_str = "Querying UsnJournal....";
 				}
 			}
 
-			if (nk_button_label(ctx, "UserAssist") && interactable) {
+			if (button("UserAssist")) {
 				output_str = ea::get_user_assist_info();
 			}
 
-			if (nk_button_label(ctx, "AppCompatFlags") && interactable) {
+			if (button("AppCompatFlags")) {
 				output_str = ea::get_app_compat_flags_info();
 			}
 
-			if (nk_button_label(ctx, "MUI Cache") && interactable) {
+			if (button("MUI Cache")) {
 				output_str = ea::get_mui_cache_info();
 			}
 
-			if (nk_button_label(ctx, "RecentApps") && interactable) {
+			if (button("RecentApps")) {
 				output_str = ea::get_recent_apps_info();
 			}
 
-			if (nk_button_label(ctx, "ShimCache") && interactable) {
+			if (button("ShimCache")) {
 				output_str = ea::get_shim_cache_info();
 			}
 
@@ -246,8 +255,7 @@ Note: It may take up to a minute to extract all data."
 
 			nk_layout_row_dynamic(ctx, 492, 1);
 			nk_edit_string(ctx, NK_EDIT_SELECTABLE | NK_EDIT_MULTILINE | NK_EDIT_ALLOW_TAB | NK_EDIT_CLIPBOARD,
-				(interactable ? output_str.data() : (char*)"Querying UsnJournal...."), &cur_len,
-				(interactable ? output_str.size() : 24), nk_filter_default);
+				output_str.data(), &cur_len, output_str.size(), nk_filter_default);
 
 			nk_layout_row_static(ctx, 25, 160, 1);
 			if (nk_button_label(ctx, "Copy to Clipboard") && interactable) {
