@@ -23,7 +23,7 @@
     <ProjectGuid>{91131B73-6D10-47A4-A72A-56F6722F2A5A}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>executionartifactstool</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -169,7 +169,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="execution_artifacts_output.cpp" />
+    <ClCompile Include="eat\eat.cpp" />
+    <ClCompile Include="eat\eat_output.cpp" />
     <ClCompile Include="imgui\examples\imgui_impl_dx9.cpp" />
     <ClCompile Include="imgui\examples\imgui_impl_win32.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
@@ -179,7 +180,8 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="execution_artifacts_output.hpp" />
+    <ClInclude Include="eat\eat.hpp" />
+    <ClInclude Include="eat\eat_output.hpp" />
     <ClInclude Include="imgui\examples\imgui_impl_dx9.h" />
     <ClInclude Include="imgui\examples\imgui_impl_win32.h" />
     <ClInclude Include="imgui\imconfig.h" />

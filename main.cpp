@@ -9,7 +9,7 @@
 #include <array>
 #include <time.h>
 
-#define WINDOW_WIDTH 821
+#define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
 
 #include "imgui/imgui.h"
@@ -17,7 +17,7 @@
 #include "imgui/examples/imgui_impl_dx9.h"
 #include "imgui/examples/imgui_impl_win32.h"
 
-#include "execution_artifacts_output.hpp"
+#include "eat/eat.hpp"
 
 IDirect3D9*           g_d3d9    = nullptr;
 IDirect3DDevice9*     g_device  = nullptr;
@@ -28,11 +28,6 @@ bool    create_d3d9_device(HWND hwnd);
 void    cleanup_d3d9_device();
 void    reset_device();
 LRESULT CALLBACK wnd_proc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam);
-
-const char* g_usn_warning_message =
-    "Due to the size of the Usn Journal, all data from all mounted drives will\n\
-be copied to the clipboard and not displayed, do you wish to continue?\n\
-Note: It may take up to a minute to extract all data.";
 
 int APIENTRY wWinMain(HINSTANCE hInstance,
                       HINSTANCE hPrevInstance,
@@ -60,16 +55,12 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
 
-    // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
-
     // Setup Platform/Renderer bindings
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX9_Init(g_device);
 
-    bool   show_demo_window    = true;
-    bool   show_another_window = false;
-    ImVec4 clear_color         = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    // Setup our own style
+    eat::on_initialize();
 
     MSG msg = { 0 };
     while(msg.message != WM_QUIT) {
@@ -84,21 +75,15 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        // 1. Show the big demo window (Most of the sample code is in
-        // ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear
-        // ImGui!).
-        if(show_demo_window)
-            ImGui::ShowDemoWindow(&show_demo_window);
+        // Do our UI
+        eat::on_frame(hwnd);
 
         // Rendering
         ImGui::EndFrame();
         g_device->SetRenderState(D3DRS_ZENABLE, false);
         g_device->SetRenderState(D3DRS_ALPHABLENDENABLE, false);
         g_device->SetRenderState(D3DRS_SCISSORTESTENABLE, false);
-        D3DCOLOR clear_col_dx = D3DCOLOR_RGBA((int)(clear_color.x * 255.0f),
-                                              (int)(clear_color.y * 255.0f),
-                                              (int)(clear_color.z * 255.0f),
-                                              (int)(clear_color.w * 255.0f));
+        D3DCOLOR clear_col_dx = D3DCOLOR_RGBA(255, 255, 255, 255);
         g_device->Clear(
             0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, clear_col_dx, 1.0f, 0);
         if(g_device->BeginScene() >= 0) {
@@ -121,144 +106,6 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
     cleanup_d3d9_device();
     DestroyWindow(hwnd);
     UnregisterClassW(wc.lpszClassName, wc.hInstance);
-
-    // create_d3d9_device(wnd);
-
-    ///* GUI */
-    // ctx = nk_d3d9_init(device, WINDOW_WIDTH, WINDOW_HEIGHT);
-
-    //{struct nk_font_atlas* atlas;
-    // nk_d3d9_font_stash_begin(&atlas);
-    // nk_d3d9_font_stash_end();}
-
-    ///* Runtime vars */
-    // std::string output_str = "Nothing here yet....";
-    // std::string usn_journal_data = "";
-    // int         cur_len = output_str.length();
-    // bool        interactable = true;
-    // bool        prev_interactable = interactable;
-
-    // auto copy_to_clipboard = [&](std::string& data) {
-    //	if (OpenClipboard(wnd) && EmptyClipboard()) {
-    //		if (HGLOBAL hmem = GlobalAlloc(GMEM_MOVEABLE, data.size())) {
-    //			memcpy(GlobalLock(hmem), data.data(), data.size());
-    //			SetClipboardData(CF_TEXT, hmem);
-    //			GlobalFree(hmem);
-    //		}
-    //		CloseClipboard();
-    //	}
-    //};
-
-    // bg.r = 0.10f, bg.g = 0.18f, bg.b = 0.24f, bg.a = 1.0f;
-    // while (running)
-    //{
-    //	/* Input */
-    //	MSG msg;
-    //	nk_input_begin(ctx);
-    //	while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) {
-    //		if (msg.message == WM_QUIT)
-    //			running = 0;
-    //		TranslateMessage(&msg);
-    //		DispatchMessageW(&msg);
-    //	}
-    //	nk_input_end(ctx);
-
-    //	/* GUI */
-    //	if (nk_begin(ctx, "Execution Artifacts Tool", nk_rect(0, 0, WINDOW_WIDTH,
-    //WINDOW_HEIGHT), NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR))
-    //	{
-    //		/* Check if the interactable state was changed back on by UsnJournal query. */
-    //		if (prev_interactable != interactable && interactable == true) {
-    //			copy_to_clipboard(usn_journal_data);
-    //			output_str = "Read " + std::to_string(usn_journal_data.size() / 1024 / 1024) +
-    //"MB from UsnJournal.."; 			usn_journal_data = "";
-    //		}
-    //		prev_interactable = interactable;
-
-    //		/* Button wrapper to enable non-immediate operations with the interactable
-    //boolean. */ 		auto button = [&interactable, ctx](const char* name) { 			return
-    //nk_button_label(ctx, name) && interactable;
-    //		};
-
-    //		nk_layout_row_dynamic(ctx, 25, 6);
-    //		if (button("Usn Journal")) {
-    //			if (MessageBoxA(wnd, g_usn_warning_message, "Warning", MB_ICONWARNING |
-    //MB_OKCANCEL) == 1) { 				interactable = false;
-    //				ea::get_usn_journal_info_deferred(usn_journal_data, interactable);
-    //				output_str = "Querying UsnJournal....";
-    //			}
-    //		}
-
-    //		if (button("UserAssist")) {
-    //			output_str = ea::get_user_assist_info();
-    //		}
-
-    //		if (button("AppCompatFlags")) {
-    //			output_str = ea::get_app_compat_flags_info();
-    //		}
-
-    //		if (button("MUI Cache")) {
-    //			output_str = ea::get_mui_cache_info();
-    //		}
-
-    //		if (button("RecentApps")) {
-    //			output_str = ea::get_recent_apps_info();
-    //		}
-
-    //		if (button("ShimCache")) {
-    //			output_str = ea::get_shim_cache_info();
-    //		}
-
-    //		cur_len = output_str.length();;
-
-    //		nk_layout_row_dynamic(ctx, 30, 1);
-    //		nk_label(ctx, "Output:", NK_TEXT_CENTERED);
-
-    //		nk_layout_row_dynamic(ctx, 492, 1);
-    //		nk_edit_string(ctx, NK_EDIT_SELECTABLE | NK_EDIT_MULTILINE | NK_EDIT_ALLOW_TAB |
-    //NK_EDIT_CLIPBOARD, 			output_str.data(), &cur_len, output_str.size(),
-    //nk_filter_default);
-
-    //		nk_layout_row_static(ctx, 25, 160, 1);
-    //		if (nk_button_label(ctx, "Copy to Clipboard") && interactable) {
-    //			copy_to_clipboard(output_str);
-    //		}
-    //	}
-    //	nk_end(ctx);
-
-    //	/* Draw */
-    //	{
-    //		HRESULT hr;
-    //		hr = IDirect3DDevice9_Clear(device, 0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER
-    //| D3DCLEAR_STENCIL, 			D3DCOLOR_COLORVALUE(bg.r, bg.g, bg.b, bg.a), 0.0f, 0);
-
-    //		hr = IDirect3DDevice9_BeginScene(device);
-    //		nk_d3d9_render(NK_ANTI_ALIASING_ON);
-    //		hr = IDirect3DDevice9_EndScene(device);
-
-    //		if (deviceEx) {
-    //			hr = IDirect3DDevice9Ex_PresentEx(deviceEx, NULL, NULL, NULL, NULL, 0);
-    //		}
-    //		else {
-    //			hr = IDirect3DDevice9_Present(device, NULL, NULL, NULL, NULL);
-    //		}
-    //		if (hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICEHUNG || hr ==
-    //D3DERR_DEVICEREMOVED) {
-    //			/* to recover from this, you'll need to recreate device and all the resources
-    //*/ 			MessageBoxW(NULL, L"D3D9 device is lost or removed!", L"Error", 0); 			break;
-    //		}
-    //		else if (hr == S_PRESENT_OCCLUDED) {
-    //			/* window is not visible, so vsync won't work. Let's sleep a bit to reduce CPU
-    //usage */ 			Sleep(10);
-    //		}
-    //	}
-    //}
-    // nk_d3d9_shutdown();
-    // if (deviceEx)IDirect3DDevice9Ex_Release(deviceEx);
-    // else IDirect3DDevice9_Release(device);
-    // UnregisterClassW(wc.lpszClassName, wc.hInstance);
-    // if (!interactable)
-    //	exit(0); /* This is not ideal but gets the job done. */
     return 0;
 }
 
@@ -266,7 +113,7 @@ HWND create_window(WNDCLASSW* wc_out)
 {
     auto& wc      = *wc_out;
     RECT  rect    = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
-    DWORD style   = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
+    DWORD style   = WS_OVERLAPPEDWINDOW;
     DWORD exstyle = WS_EX_APPWINDOW;
     HWND  wnd;
     int   running = 1;
