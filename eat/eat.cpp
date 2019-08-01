@@ -148,7 +148,7 @@ namespace eat {
                     input_text_buffer._Tidy_deallocate();
                     input_text_buffer =
                         "Results were not displayed. You may re-enable them in the options tree.";
-				}
+                }
             };
 
             // Do the menubar
@@ -215,17 +215,21 @@ namespace eat {
                 ImGui::TreePop();
             }
 
-			// Lambda to fit elements in the same line that fit.
-            ImGuiStyle& style = ImGui::GetStyle();
-            //float       window_visible_x2 =
-            //    ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-			auto lmbd_futil_wrap_sameline = [&](const char* prev_button_name) {
+            // Lambda to fit elements in the same line ONLY if they fit in the frame.
+            auto lmbd_futil_wrap_sameline = [&](const char* prev_button_name) {
+                ImGuiStyle& style = ImGui::GetStyle();
                 if(ImGui::GetItemRectMax().x + style.ItemSpacing.x +
                        ImGui::CalcTextSize(prev_button_name).x +
                        style.FramePadding.x * 2.f <
                    ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x)
                     ImGui::SameLine();
-			};
+            };
+
+			if (ImGui::Button("< Clear Screen >")) {
+                input_text_buffer._Tidy_deallocate();
+                input_text_buffer = "Cleared.";
+			}
+            lmbd_futil_wrap_sameline("< Clear Screen >");
 
             { // UsnJournal
                 static bool        usn_query_completed = false;
@@ -395,8 +399,6 @@ namespace eat {
                              0.f,
                              alligned_pws / 1024.f,
                              ImVec2(0.f, 70));
-
-            ImGui::Separator();
         }
     }
 
