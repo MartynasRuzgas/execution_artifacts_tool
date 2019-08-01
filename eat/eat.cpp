@@ -1,3 +1,25 @@
+/*
+Copyright (c) 2019 Martynas Ruzgas
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 #include "eat.hpp"
 #include "eat_output.hpp"
 #include <imgui.h>
@@ -112,9 +134,11 @@ namespace eat {
                     if(ImGui::MenuItem(("Save " + last_artifact_fname).c_str()) &&
                        !empty) {
                         write_to_disk();
-                    }
-                    if(empty && ImGui::IsItemHovered())
+					}
+
+                    if(empty && ImGui::IsItemHovered()) {
                         ImGui::SetTooltip("Query an artifact first.");
+					}
 
                     if(ImGui::MenuItem(
                            ("Save " + last_artifact_fname + (empty ? "as..." : " as..."))
@@ -124,8 +148,10 @@ namespace eat {
                         if(!last_save_location.empty())
                             write_to_disk();
                     }
-                    if(empty && ImGui::IsItemHovered())
+
+                    if(empty && ImGui::IsItemHovered()) {
                         ImGui::SetTooltip("Query an artifact first.");
+					}
 
                     if(ImGui::MenuItem("Copy To Clipboard")) {
                         futil_copy_to_clipboard(hwnd, input_text_buffer);
@@ -201,6 +227,18 @@ namespace eat {
                 last_artifact_fname = "Shim_AppCompat(Cache).txt";
             }
 
+			if(ImGui::Button("RunMRU")) {
+                input_text_buffer   = eat::get_run_mru();
+                last_artifact_fname = "RunMRU.txt";
+            }
+
+            ImGui::SameLine();
+
+			if(ImGui::Button("RecentDocsMRU")) {
+                input_text_buffer   = eat::get_recent_docs_mru();
+                last_artifact_fname = "RecentDocsMRU.txt";
+            }
+
             ImGui::InputTextMultiline("##EatOutputTextBox",
                                       const_cast<char*>(input_text_buffer.c_str()),
                                       input_text_buffer.size(),
@@ -245,11 +283,23 @@ namespace eat {
 
     void futil_show_about(bool& show_about)
     {
+        ImGui::SetNextWindowSize(ImVec2(580.f, 156.f), ImGuiCond_Once);
         if(ImGui::Begin("About##AboutWindow",
                         &show_about,
                         ImGuiWindowFlags_NoCollapse)) {
-            ImGui::Text("Hello");
-            ImGui::End();
+
+			ImGui::Text(
+                "An Open-Source, purely C++ Microsoft Windows execution/interaction artifact tool.");
+            ImGui::Text("");
+			ImGui::Text("Dear ImGui By Omar Cornut and all dear imgui contributors,");
+            ImGui::Text("Execution Artifacts By Justas Masiulis and Martynas Ruzgas.");
+            ImGui::Text("");
+			ImGui::Text("This software is licensed under the MIT license,");
+			if (ImGui::Button("Check out the source code on github!")) {
+                ShellExecuteW(0, 0, L"https://github.com/MartynasRuzgas/execution_artifacts_tool", 0, 0, SW_SHOW);
+			}
+
+			ImGui::End();
 
             if(ImGui::IsWindowFocused())
                 show_about = false;
