@@ -5,6 +5,7 @@
 #include <app_compat_flags.hpp>
 #include <mui_cache.hpp>
 #include <user_assist.hpp>
+#include <mru.hpp>
 #include <sid.hpp>
 
 #include <vector>
@@ -49,6 +50,48 @@ namespace eat {
         }
 
     } // namespace detail
+
+    std::string get_run_mru()
+    {
+        wchar_t buffer[256];
+        auto    end = buffer;
+        ea::acquire_and_format_sid(end);
+        std::wstring_view sid(buffer, end - buffer);
+
+        std::stringstream ss;
+        auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        ss << "Dumping RunMRU, Timestamp: " << std::ctime(&now) << std::endl;
+        ss << "Note: Entries are sorted from most recent to least." << std::endl;
+
+        ea::enum_runmru(sid, [&](ea::run_mru_t& entries) {
+            for(auto& entry : entries) {
+                ss << std::string(entry.begin(), entry.end()) << std::endl;
+            }
+        });
+
+        return ss.str();
+    }
+
+    std::string get_recent_docs_mru()
+    {
+        wchar_t buffer[256];
+        auto    end = buffer;
+        ea::acquire_and_format_sid(end);
+        std::wstring_view sid(buffer, end - buffer);
+
+        std::stringstream ss;
+        auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        ss << "Dumping RecentDocsMRU, Timestamp: " << std::ctime(&now) << std::endl;
+        ss << "Note: Entries are sorted from most recent to least." << std::endl;
+
+        ea::enum_recentdocsmru(sid, [&](ea::recent_docs_mru_t& entries) {
+            for(auto& entry : entries) {
+                ss << std::string(entry.begin(), entry.end()) << std::endl;
+            }
+        });
+
+        return ss.str();
+    }
 
     std::string get_app_compat_flags_info()
     {
@@ -117,8 +160,9 @@ namespace eat {
         ea::enum_recent_apps(sid, [&](ea::recent_app& entry) {
             auto last_access = detail::filetime_to_unix_timestamp(entry.last_access());
             ss << "Launch Count: [" << entry.launch_count() << "], Last Access Time: ["
-               << (entry.last_access() ? detail::format_time(last_access) : "Invalid") << "], "
-               << std::string(entry.path().begin(), entry.path().end()) << std::endl;
+               << (entry.last_access() ? detail::format_time(last_access) : "Invalid")
+               << "], " << std::string(entry.path().begin(), entry.path().end())
+               << std::endl;
 
             entry.enum_recent_items([&](ea::recent_app::recent_item& item_entry) {
                 auto item_last_access =
