@@ -330,3 +330,5 @@ ASALocalRun/
 .mfractor/
 sh.exe.stackdump
 imgui.ini
+*.ini
+*.stackdump

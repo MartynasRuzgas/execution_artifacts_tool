@@ -119,8 +119,8 @@ namespace eat {
             static bool        auto_copy_result_to_clipboard = false;
             static bool        dont_display_result           = false;
 
-            auto lmbd_futil_write_result_to_file = [&]() {
-                if(!last_save_location.empty()) {
+            auto lmbd_futil_write_result_to_file = [&](bool only_cur_dir = false) {
+                if(!only_cur_dir && !last_save_location.empty()) {
                     std::ofstream fout(last_save_location);
                     if(!fout.is_open())
                         MessageBoxA(hwnd, "Failed to open file.", "EAT - Error", MB_OK);
@@ -139,7 +139,7 @@ namespace eat {
                 last_artifact_filename = filename;
 
                 if(auto_save_result_to_file)
-                    lmbd_futil_write_result_to_file();
+                    lmbd_futil_write_result_to_file(true);
 
                 if(auto_copy_result_to_clipboard)
                     futil_copy_to_clipboard(hwnd, input_text_buffer);
@@ -183,10 +183,11 @@ namespace eat {
                     }
                     ImGui::EndMenu();
                 }
-                if(ImGui::BeginMenu("Info##Menu")) {
-                    if(ImGui::MenuItem("About")) {
-                        show_about = true;
-                    }
+                if(ImGui::BeginMenu("About##Menu")) {
+                    show_about = true;
+                    //if(ImGui::MenuItem("About")) {
+                    //    show_about = true;
+                    //}
                     ImGui::EndMenu();
                 }
                 ImGui::EndMenuBar();
