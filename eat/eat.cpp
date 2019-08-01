@@ -3,12 +3,10 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <fstream>
+
 #include <winuser.h>
 #pragma comment(lib, "User32.lib")
-
-struct {
-    bool show_about = false;
-} g_uistate;
 
 namespace eat {
 
@@ -73,8 +71,9 @@ namespace eat {
         style.WindowRounding = 0.f;
     }
 
-	void futil_copy_to_clipboard(HWND hwnd, std::string& data);
-    void futil_show_about();
+    std::string futil_get_user_save_path(HWND hwnd);
+    void        futil_copy_to_clipboard(HWND hwnd, std::string& data);
+    void        futil_show_about(bool& show_about);
 
     void on_frame(HWND hwnd)
     {
@@ -84,21 +83,66 @@ namespace eat {
                         nullptr,
                         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
                             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_MenuBar)) {
+            static std::string last_save_location  = "";
+            static std::string last_artifact_fname = "";
+            static std::string input_text_buffer   = "Ready.";
+            static bool        show_about          = false;
+
             // Do the menubar
             if(ImGui::BeginMenuBar()) {
-                if(ImGui::BeginMenu("Help")) {
+                if(ImGui::BeginMenu("File")) {
+                    bool empty         = last_artifact_fname.empty();
+                    auto write_to_disk = [&]() {
+                        if(!last_save_location.empty()) {
+                            std::ofstream fout(last_save_location);
+                            if(!fout.is_open())
+                                MessageBoxA(
+                                    hwnd, "Failed to open file.", "EAT - Error", MB_OK);
+                            fout << input_text_buffer;
+                        }
+                        else {
+                            std::ofstream fout(last_artifact_fname + ".txt");
+                            if(!fout.is_open())
+                                MessageBoxA(
+                                    hwnd, "Failed to open file.", "EAT - Error", MB_OK);
+                            fout << input_text_buffer;
+                        }
+                    };
+
+                    if(ImGui::MenuItem(("Save " + last_artifact_fname).c_str()) &&
+                       !empty) {
+                        write_to_disk();
+                    }
+                    if(empty && ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Query an artifact first.");
+
+                    if(ImGui::MenuItem(
+                           ("Save " + last_artifact_fname + (empty ? "as..." : " as..."))
+                               .c_str()) &&
+                       !empty) {
+                        last_save_location = futil_get_user_save_path(hwnd);
+                        if(!last_save_location.empty())
+                            write_to_disk();
+                    }
+                    if(empty && ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Query an artifact first.");
+
+                    if(ImGui::MenuItem("Copy To Clipboard")) {
+                        futil_copy_to_clipboard(hwnd, input_text_buffer);
+                    }
+                    ImGui::EndMenu();
+                }
+                if(ImGui::BeginMenu("Info##Menu")) {
                     if(ImGui::MenuItem("About")) {
-                        g_uistate.show_about = true;
+                        show_about = true;
                     }
                     ImGui::EndMenu();
                 }
                 ImGui::EndMenuBar();
             }
 
-            if(g_uistate.show_about)
-                futil_show_about();
-
-            static std::string input_text_buffer = "Ready.";
+            if(show_about)
+                futil_show_about(show_about);
 
             { // UsnJournal
                 static bool        usn_query_completed = false;
@@ -106,7 +150,7 @@ namespace eat {
                 if(ImGui::Button("UsnJournal")) {
                     if(MessageBoxA(
                            hwnd,
-                           "This operation can take a while and will use a bunch of memory.\nContinue?",
+                           "This operation can take a while and use a bunch of memory.\nContinue?",
                            "Warning",
                            MB_ICONWARNING | MB_YESNO) == IDYES) {
                         eat::get_usn_journal_info_deferred(usn_result,
@@ -118,16 +162,73 @@ namespace eat {
                 if(usn_query_completed) {
                     usn_query_completed = false;
                     input_text_buffer   = std::move(usn_result);
+                    last_artifact_fname = "UsnJournal.txt";
                 }
+            }
+
+            ImGui::SameLine();
+
+            if(ImGui::Button("UserAssist")) {
+                input_text_buffer   = eat::get_user_assist_info();
+                last_artifact_fname = "UserAssist.txt";
+            }
+
+            ImGui::SameLine();
+
+            if(ImGui::Button("AppCompatFlags")) {
+                input_text_buffer   = eat::get_app_compat_flags_info();
+                last_artifact_fname = "AppCompatFlags.txt";
+            }
+
+            ImGui::SameLine();
+
+            if(ImGui::Button("MUI Cache")) {
+                input_text_buffer   = eat::get_mui_cache_info();
+                last_artifact_fname = "MUI Cache.txt";
+            }
+
+            ImGui::SameLine();
+
+            if(ImGui::Button("RecentApps (W10+)")) {
+                input_text_buffer   = eat::get_recent_apps_info();
+                last_artifact_fname = "RecentApps.txt";
+            }
+
+            ImGui::SameLine();
+
+            if(ImGui::Button("Shim/AppCompat(Cache)")) {
+                input_text_buffer   = eat::get_shim_cache_info();
+                last_artifact_fname = "Shim_AppCompat(Cache).txt";
             }
 
             ImGui::InputTextMultiline("##EatOutputTextBox",
                                       const_cast<char*>(input_text_buffer.c_str()),
                                       input_text_buffer.size(),
-                                      ImVec2(-1.f, 500.f), ImGuiInputTextFlags_ReadOnly);
+                                      ImVec2(-1.f, -1.f),
+                                      ImGuiInputTextFlags_ReadOnly);
 
             ImGui::End();
         }
+    }
+
+    std::string futil_get_user_save_path(HWND hwnd)
+    {
+        char filename[MAX_PATH];
+
+        OPENFILENAME ofn;
+        ZeroMemory(&filename, sizeof(filename));
+        ZeroMemory(&ofn, sizeof(ofn));
+        ofn.lStructSize = sizeof(ofn);
+        ofn.hwndOwner   = hwnd;
+        ofn.lpstrFilter = "Text Files\0*.txt\0Any File\0*.*\0";
+        ofn.lpstrFile   = filename;
+        ofn.nMaxFile    = MAX_PATH;
+        ofn.lpstrTitle  = "Save File As";
+        ofn.Flags       = OFN_DONTADDTORECENT;
+
+        if(GetOpenFileNameA(&ofn))
+            return filename;
+        return "";
     }
 
     void futil_copy_to_clipboard(HWND hwnd, std::string& data)
@@ -142,15 +243,16 @@ namespace eat {
         }
     }
 
-    void futil_show_about()
+    void futil_show_about(bool& show_about)
     {
-        if(ImGui::Begin(
-               "About##AboutWindow", &g_uistate.show_about, ImGuiWindowFlags_NoCollapse)) {
+        if(ImGui::Begin("About##AboutWindow",
+                        &show_about,
+                        ImGuiWindowFlags_NoCollapse)) {
             ImGui::Text("Hello");
             ImGui::End();
 
             if(ImGui::IsWindowFocused())
-                g_uistate.show_about = false;
+                show_about = false;
         }
     }
 

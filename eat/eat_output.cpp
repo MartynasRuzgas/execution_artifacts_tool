@@ -96,7 +96,7 @@ namespace eat {
             ss << "Time: ["
                << (entry.last_modification_time.dwLowDateTime
                        ? detail::format_time(last_modification_time)
-                       : "0")
+                       : "Invalid")
                << "], " << std::string(entry.path.begin(), entry.path.end()) << std::endl;
         });
 
@@ -117,7 +117,7 @@ namespace eat {
         ea::enum_recent_apps(sid, [&](ea::recent_app& entry) {
             auto last_access = detail::filetime_to_unix_timestamp(entry.last_access());
             ss << "Launch Count: [" << entry.launch_count() << "], Last Access Time: ["
-               << (entry.last_access() ? detail::format_time(last_access) : "0") << "], "
+               << (entry.last_access() ? detail::format_time(last_access) : "Invalid") << "], "
                << std::string(entry.path().begin(), entry.path().end()) << std::endl;
 
             entry.enum_recent_items([&](ea::recent_app::recent_item& item_entry) {
@@ -125,7 +125,7 @@ namespace eat {
                     detail::filetime_to_unix_timestamp(item_entry.last_access());
                 ss << "    Last Acccess Time: ["
                    << (item_entry.last_access() ? detail::format_time(item_last_access)
-                                                : "0")
+                                                : "Invalid")
                    << "], "
                    << std::string(item_entry.display_name().begin(),
                                   item_entry.display_name().end())
@@ -152,10 +152,10 @@ namespace eat {
                 detail::filetime_to_unix_timestamp(entry.last_execution_time);
             ss << "Ran Count: [" << entry.run_counter << "], Focus Time: ["
                << (entry.focus_time_had ? detail::format_time(entry.focus_time_had / 1000)
-                                        : "0")
+                                        : "Invalid")
                << "], Last Execution Time: ["
                << (entry.last_execution_time ? detail::format_time(last_execution_time)
-                                             : "0")
+                                             : "Invalid")
                << "], " << std::string(entry.name.begin(), entry.name.end()) << std::endl;
         });
         return ss.str();
@@ -191,7 +191,7 @@ namespace eat {
                                 << "    Time: ["
                                 << (entry.interact_time_utf
                                         ? detail::format_time(interact_time_utf)
-                                        : "0")
+                                        : "Invalid")
                                 << "], Reason: [0x" << std::hex << entry.reason << "], "
                                 << std::string(entry.path.begin(), entry.path.end())
                                 << std::endl;
@@ -203,7 +203,7 @@ namespace eat {
 
             /* Wait until all drives are processed. */
             while(drive_count != 0)
-                Sleep(200);
+                Sleep(100);
 
             for(auto& [stream, drive_index] : sstreams)
                 result += stream.str();
