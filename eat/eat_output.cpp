@@ -88,7 +88,7 @@ namespace eat {
 
         ea::enum_runmru(sid, [&](ea::run_mru_t& entries) {
             for(auto& entry : entries) {
-                ss << std::string(entry.begin(), entry.end()) << std::endl;
+                ss << std::string(entry.begin(), entry.end()).c_str() << std::endl;
             }
         });
 
@@ -237,7 +237,8 @@ namespace eat {
             std::stringstream ss;
             auto              now =
                 std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-            ss << "Dumping UsnJournal, Timestamp: " << std::ctime(&now) << std::endl;
+            ss << "Dumping UsnJournal, Timestamp: " << std::ctime(&now);
+            ss << "Visit https://docs.microsoft.com/en-us/windows/win32/api/winioctl/ns-winioctl-usn_record_v2 for the reason values.\n\n";
 
             int                                            drive_count = 0;
             std::vector<std::pair<std::stringstream, int>> sstreams;
@@ -269,10 +270,11 @@ namespace eat {
                     .detach();
             }
 
-            /* Wait until all drives are processed. */
+            // Wait until all drives are processed.
             while(drive_count != 0)
                 Sleep(100);
 
+            result += ss.str();
             for(auto& [stream, drive_index] : sstreams)
                 result += stream.str();
             completed = true;

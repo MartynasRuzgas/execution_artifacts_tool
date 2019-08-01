@@ -26,8 +26,10 @@ SOFTWARE.
 #include <imgui_internal.h>
 
 #include <fstream>
-
+#include <Psapi.h>
 #include <winuser.h>
+#include <VersionHelpers.h>
+
 #pragma comment(lib, "User32.lib")
 
 namespace eat {
@@ -109,6 +111,7 @@ namespace eat {
             static std::string last_artifact_fname = "";
             static std::string input_text_buffer   = "Ready.";
             static bool        show_about          = false;
+            static bool        is_min_windows_10   = IsWindows10OrGreater();
 
             // Do the menubar
             if(ImGui::BeginMenuBar()) {
@@ -153,7 +156,7 @@ namespace eat {
                         ImGui::SetTooltip("Query an artifact first.");
                     }
 
-                    if(ImGui::MenuItem("Copy To Clipboard")) {
+                    if(ImGui::MenuItem("Copy All To Clipboard")) {
                         futil_copy_to_clipboard(hwnd, input_text_buffer);
                     }
                     ImGui::EndMenu();
@@ -169,6 +172,12 @@ namespace eat {
 
             if(show_about)
                 futil_show_about(show_about);
+
+			PROCESS_MEMORY_COUNTERS pmc;
+            if(GetProcessMemoryInfo(
+                   GetCurrentProcess(), &pmc, sizeof(pmc))) {
+                ImGui::Text("Working Set: %dKB", pmc.WorkingSetSize / 1024 / 1000);
+			}
 
             { // UsnJournal
                 static bool        usn_query_completed = false;
@@ -214,8 +223,8 @@ namespace eat {
             }
 
             ImGui::SameLine();
-
-            if(ImGui::Button("RecentApps (W10+)")) {
+		
+            if(ImGui::Button("RecentApps (W10+)") && is_min_windows_10) {
                 input_text_buffer   = eat::get_recent_apps_info();
                 last_artifact_fname = "RecentApps.txt";
             }
@@ -251,22 +260,18 @@ namespace eat {
 
     std::string futil_get_user_save_path(HWND hwnd)
     {
-        char filename[MAX_PATH];
+        char filename[MAX_PATH] = { 0 };
 
-        OPENFILENAME ofn;
-        ZeroMemory(&filename, sizeof(filename));
-        ZeroMemory(&ofn, sizeof(ofn));
-        ofn.lStructSize = sizeof(ofn);
-        ofn.hwndOwner   = hwnd;
-        ofn.lpstrFilter = "Text Files\0*.txt\0Any File\0*.*\0";
-        ofn.lpstrFile   = filename;
-        ofn.nMaxFile    = MAX_PATH;
-        ofn.lpstrTitle  = "Save File As";
-        ofn.Flags       = OFN_DONTADDTORECENT;
+        OPENFILENAME ofn = { 0 };
+        ofn.lStructSize  = sizeof(ofn);
+        ofn.hwndOwner    = hwnd;
+        ofn.lpstrFilter  = "Text Files\0*.txt\0Any File\0*.*\0";
+        ofn.lpstrFile    = filename;
+        ofn.nMaxFile     = MAX_PATH;
+        ofn.lpstrTitle   = "Save File As";
+        ofn.Flags        = OFN_DONTADDTORECENT;
 
-        if(GetOpenFileNameA(&ofn))
-            return filename;
-        return "";
+        return GetOpenFileNameA(&ofn) ? filename : "";
     }
 
     void futil_copy_to_clipboard(HWND hwnd, std::string& data)

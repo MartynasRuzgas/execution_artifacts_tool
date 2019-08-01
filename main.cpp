@@ -113,10 +113,9 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
             ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
             g_device->EndScene();
         }
-        HRESULT result = g_device->Present(NULL, NULL, NULL, NULL);
 
         // Handle loss of D3D9 device
-        if(result == D3DERR_DEVICELOST &&
+        if(g_device->Present(NULL, NULL, NULL, NULL) == D3DERR_DEVICELOST &&
            g_device->TestCooperativeLevel() == D3DERR_DEVICENOTRESET)
             reset_device();
     }
@@ -137,8 +136,6 @@ HWND create_window(WNDCLASSW* wc_out)
     RECT  rect    = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
     DWORD style   = WS_OVERLAPPEDWINDOW;
     DWORD exstyle = WS_EX_APPWINDOW;
-    HWND  wnd;
-    int   running = 1;
 
     memset(&wc, 0, sizeof(wc));
     wc.style         = CS_DBLCLKS;
