@@ -134,11 +134,11 @@ namespace eat {
                     if(ImGui::MenuItem(("Save " + last_artifact_fname).c_str()) &&
                        !empty) {
                         write_to_disk();
-					}
+                    }
 
                     if(empty && ImGui::IsItemHovered()) {
                         ImGui::SetTooltip("Query an artifact first.");
-					}
+                    }
 
                     if(ImGui::MenuItem(
                            ("Save " + last_artifact_fname + (empty ? "as..." : " as..."))
@@ -151,7 +151,7 @@ namespace eat {
 
                     if(empty && ImGui::IsItemHovered()) {
                         ImGui::SetTooltip("Query an artifact first.");
-					}
+                    }
 
                     if(ImGui::MenuItem("Copy To Clipboard")) {
                         futil_copy_to_clipboard(hwnd, input_text_buffer);
@@ -227,14 +227,14 @@ namespace eat {
                 last_artifact_fname = "Shim_AppCompat(Cache).txt";
             }
 
-			if(ImGui::Button("RunMRU")) {
+            if(ImGui::Button("RunMRU")) {
                 input_text_buffer   = eat::get_run_mru();
                 last_artifact_fname = "RunMRU.txt";
             }
 
             ImGui::SameLine();
 
-			if(ImGui::Button("RecentDocsMRU")) {
+            if(ImGui::Button("RecentDocsMRU")) {
                 input_text_buffer   = eat::get_recent_docs_mru();
                 last_artifact_fname = "RecentDocsMRU.txt";
             }
@@ -284,22 +284,25 @@ namespace eat {
     void futil_show_about(bool& show_about)
     {
         ImGui::SetNextWindowSize(ImVec2(580.f, 156.f), ImGuiCond_Once);
-        if(ImGui::Begin("About##AboutWindow",
-                        &show_about,
-                        ImGuiWindowFlags_NoCollapse)) {
-
-			ImGui::Text(
+        if(ImGui::Begin("About##AboutWindow", &show_about, ImGuiWindowFlags_NoCollapse)) {
+            ImGui::Text(
                 "An Open-Source, purely C++ Microsoft Windows execution/interaction artifact tool.");
             ImGui::Text("");
-			ImGui::Text("Dear ImGui By Omar Cornut and all dear imgui contributors,");
+            ImGui::Text("Dear ImGui By Omar Cornut and all dear imgui contributors,");
             ImGui::Text("Execution Artifacts By Justas Masiulis and Martynas Ruzgas.");
             ImGui::Text("");
-			ImGui::Text("This software is licensed under the MIT license,");
-			if (ImGui::Button("Check out the source code on github!")) {
-                ShellExecuteW(0, 0, L"https://github.com/MartynasRuzgas/execution_artifacts_tool", 0, 0, SW_SHOW);
-			}
+            ImGui::Text("This software is licensed under the MIT license,");
+            if(ImGui::Button("Check out the source code on github!")) {
+                ShellExecuteW(
+                    0,
+                    0,
+                    L"https://github.com/MartynasRuzgas/execution_artifacts_tool",
+                    0,
+                    0,
+                    SW_SHOW);
+            }
 
-			ImGui::End();
+            ImGui::End();
 
             if(ImGui::IsWindowFocused())
                 show_about = false;
