@@ -110,49 +110,68 @@ namespace eat {
                         nullptr,
                         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
                             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_MenuBar)) {
-            static std::string last_save_location  = "";
-            static std::string last_artifact_fname = "";
-            static std::string input_text_buffer   = "Ready.";
-            static bool        show_about          = false;
-            static bool        is_min_windows_10   = IsWindows10OrGreater();
+            static std::string last_save_location            = "";
+            static std::string last_artifact_filename        = "";
+            static std::string input_text_buffer             = "Ready.";
+            static bool        show_about                    = false;
+            static bool        is_min_windows_10             = IsWindows10OrGreater();
+            static bool        auto_save_result_to_file      = false;
+            static bool        auto_copy_result_to_clipboard = false;
+            static bool        dont_display_result           = false;
+
+            auto lmbd_futil_write_result_to_file = [&]() {
+                if(!last_save_location.empty()) {
+                    std::ofstream fout(last_save_location);
+                    if(!fout.is_open())
+                        MessageBoxA(hwnd, "Failed to open file.", "EAT - Error", MB_OK);
+                    fout << input_text_buffer;
+                }
+                else {
+                    std::ofstream fout(last_artifact_filename + ".txt");
+                    if(!fout.is_open())
+                        MessageBoxA(hwnd, "Failed to open file.", "EAT - Error", MB_OK);
+                    fout << input_text_buffer;
+                }
+            };
+
+            // Lambda to be called after we query an artifact.
+            auto lmbd_futil_postprocess = [&](const char* filename) {
+                last_artifact_filename = filename;
+
+                if(auto_save_result_to_file)
+                    lmbd_futil_write_result_to_file();
+
+                if(auto_copy_result_to_clipboard)
+                    futil_copy_to_clipboard(hwnd, input_text_buffer);
+
+                if(dont_display_result) {
+                    input_text_buffer._Tidy_deallocate();
+                    input_text_buffer =
+                        "Results were not displayed. You may re-enable them in the options tree.";
+				}
+            };
 
             // Do the menubar
             if(ImGui::BeginMenuBar()) {
                 if(ImGui::BeginMenu("File")) {
-                    bool empty         = last_artifact_fname.empty();
-                    auto write_to_disk = [&]() {
-                        if(!last_save_location.empty()) {
-                            std::ofstream fout(last_save_location);
-                            if(!fout.is_open())
-                                MessageBoxA(
-                                    hwnd, "Failed to open file.", "EAT - Error", MB_OK);
-                            fout << input_text_buffer;
-                        }
-                        else {
-                            std::ofstream fout(last_artifact_fname + ".txt");
-                            if(!fout.is_open())
-                                MessageBoxA(
-                                    hwnd, "Failed to open file.", "EAT - Error", MB_OK);
-                            fout << input_text_buffer;
-                        }
-                    };
+                    bool empty = last_artifact_filename.empty();
 
-                    if(ImGui::MenuItem(("Save " + last_artifact_fname).c_str()) &&
+                    if(ImGui::MenuItem(("Save " + last_artifact_filename).c_str()) &&
                        !empty) {
-                        write_to_disk();
+                        lmbd_futil_write_result_to_file();
                     }
 
                     if(empty && ImGui::IsItemHovered()) {
                         ImGui::SetTooltip("Query an artifact first.");
                     }
 
-                    if(ImGui::MenuItem(
-                           ("Save " + last_artifact_fname + (empty ? "as..." : " as..."))
-                               .c_str()) &&
+                    if(ImGui::MenuItem(("Save " + last_artifact_filename +
+                                        (empty ? "as..." : " as..."))
+                                           .c_str()) &&
                        !empty) {
                         last_save_location = futil_get_user_save_path(hwnd);
                         if(!last_save_location.empty())
-                            write_to_disk();
+                            lmbd_futil_write_result_to_file();
                     }
 
                     if(empty && ImGui::IsItemHovered()) {
@@ -187,6 +206,27 @@ namespace eat {
                 // Clear the history if we didn't show it.
                 memory_usage_history.clear();
 
+            // Do the options menu
+            if(ImGui::TreeNode("Options")) {
+                ImGui::Checkbox("Auto save result to file", &auto_save_result_to_file);
+                ImGui::Checkbox("Auto copy result to clipboard",
+                                &auto_copy_result_to_clipboard);
+                ImGui::Checkbox("Don't display results", &dont_display_result);
+                ImGui::TreePop();
+            }
+
+			// Lambda to fit elements in the same line that fit.
+            ImGuiStyle& style = ImGui::GetStyle();
+            //float       window_visible_x2 =
+            //    ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+			auto lmbd_futil_wrap_sameline = [&](const char* prev_button_name) {
+                if(ImGui::GetItemRectMax().x + style.ItemSpacing.x +
+                       ImGui::CalcTextSize(prev_button_name).x +
+                       style.FramePadding.x * 2.f <
+                   ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x)
+                    ImGui::SameLine();
+			};
+
             { // UsnJournal
                 static bool        usn_query_completed = false;
                 static std::string usn_result          = "";
@@ -205,55 +245,50 @@ namespace eat {
                 if(usn_query_completed) {
                     usn_query_completed = false;
                     input_text_buffer   = std::move(usn_result);
-                    last_artifact_fname = "UsnJournal.txt";
+                    lmbd_futil_postprocess("UsnJournal.txt");
                 }
             }
-
-            ImGui::SameLine();
+            lmbd_futil_wrap_sameline("UsnJournal");
 
             if(ImGui::Button("UserAssist")) {
-                input_text_buffer   = eat::get_user_assist_info();
-                last_artifact_fname = "UserAssist.txt";
+                input_text_buffer = eat::get_user_assist_info();
+                lmbd_futil_postprocess("UserAssist.txt");
             }
-
-            ImGui::SameLine();
+            lmbd_futil_wrap_sameline("UserAssist");
 
             if(ImGui::Button("AppCompatFlags")) {
-                input_text_buffer   = eat::get_app_compat_flags_info();
-                last_artifact_fname = "AppCompatFlags.txt";
+                input_text_buffer = eat::get_app_compat_flags_info();
+                lmbd_futil_postprocess("AppCompatFlags.txt");
             }
-
-            ImGui::SameLine();
+            lmbd_futil_wrap_sameline("AppCompatFlags");
 
             if(ImGui::Button("MUI Cache")) {
-                input_text_buffer   = eat::get_mui_cache_info();
-                last_artifact_fname = "MUI Cache.txt";
+                input_text_buffer = eat::get_mui_cache_info();
+                lmbd_futil_postprocess("MUI Cache.txt");
             }
-
-            ImGui::SameLine();
+            lmbd_futil_wrap_sameline("MUI Cache");
 
             if(ImGui::Button("RecentApps (W10+)") && is_min_windows_10) {
-                input_text_buffer   = eat::get_recent_apps_info();
-                last_artifact_fname = "RecentApps.txt";
+                input_text_buffer = eat::get_recent_apps_info();
+                lmbd_futil_postprocess("RecentApps.txt");
             }
-
-            ImGui::SameLine();
+            lmbd_futil_wrap_sameline("RecentApps (W10+)");
 
             if(ImGui::Button("Shim/AppCompat(Cache)")) {
-                input_text_buffer   = eat::get_shim_cache_info();
-                last_artifact_fname = "Shim_AppCompat(Cache).txt";
+                input_text_buffer = eat::get_shim_cache_info();
+                lmbd_futil_postprocess("Shim_AppCompat(Cache).txt");
             }
+            lmbd_futil_wrap_sameline("Shim/AppCompat(Cache)");
 
             if(ImGui::Button("RunMRU")) {
-                input_text_buffer   = eat::get_run_mru();
-                last_artifact_fname = "RunMRU.txt";
+                input_text_buffer = eat::get_run_mru();
+                lmbd_futil_postprocess("RunMRU.txt");
             }
-
-            ImGui::SameLine();
+            lmbd_futil_wrap_sameline("RunMRU");
 
             if(ImGui::Button("RecentDocsMRU")) {
-                input_text_buffer   = eat::get_recent_docs_mru();
-                last_artifact_fname = "RecentDocsMRU.txt";
+                input_text_buffer = eat::get_recent_docs_mru();
+                lmbd_futil_postprocess("RecentDocsMRU.txt");
             }
 
             ImGui::InputTextMultiline("##EatOutputTextBox",
