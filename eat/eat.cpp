@@ -25,6 +25,8 @@ SOFTWARE.
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <deque>
+#include <iomanip>
 #include <fstream>
 #include <Psapi.h>
 #include <winuser.h>
@@ -98,6 +100,7 @@ namespace eat {
     std::string futil_get_user_save_path(HWND hwnd);
     void        futil_copy_to_clipboard(HWND hwnd, std::string& data);
     void        futil_show_about(bool& show_about);
+    void        futil_show_memory_stats(std::deque<float>& memory_usage_history);
 
     void on_frame(HWND hwnd)
     {
@@ -170,14 +173,19 @@ namespace eat {
                 ImGui::EndMenuBar();
             }
 
+            // Do the about window
             if(show_about)
                 futil_show_about(show_about);
 
-			PROCESS_MEMORY_COUNTERS pmc;
-            if(GetProcessMemoryInfo(
-                   GetCurrentProcess(), &pmc, sizeof(pmc))) {
-                ImGui::Text("Working Set: %dKB", pmc.WorkingSetSize / 1024 / 1000);
-			}
+            // Do the memory stats
+            static std::deque<float> memory_usage_history;
+            if(ImGui::TreeNode("Memory Stats")) {
+                futil_show_memory_stats(memory_usage_history);
+                ImGui::TreePop();
+            }
+            else
+                // Clear the history if we didn't show it.
+                memory_usage_history.clear();
 
             { // UsnJournal
                 static bool        usn_query_completed = false;
@@ -185,7 +193,7 @@ namespace eat {
                 if(ImGui::Button("UsnJournal")) {
                     if(MessageBoxA(
                            hwnd,
-                           "This operation can take a while and use a bunch of memory.\nContinue?",
+                           "This operation can take a while and use a bunch of cpu/memory resources. You can track the usage in the Memory Stats.\nContinue?",
                            "Warning",
                            MB_ICONWARNING | MB_YESNO) == IDYES) {
                         eat::get_usn_journal_info_deferred(usn_result,
@@ -223,7 +231,7 @@ namespace eat {
             }
 
             ImGui::SameLine();
-		
+
             if(ImGui::Button("RecentApps (W10+)") && is_min_windows_10) {
                 input_text_buffer   = eat::get_recent_apps_info();
                 last_artifact_fname = "RecentApps.txt";
@@ -311,6 +319,49 @@ namespace eat {
 
             if(ImGui::IsWindowFocused())
                 show_about = false;
+        }
+    }
+
+    void futil_show_memory_stats(std::deque<float>& memory_usage_history)
+    {
+        PROCESS_MEMORY_COUNTERS_EX pmc;
+        if(GetProcessMemoryInfo(
+               GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc))) {
+            const auto     private_usage_mb = pmc.PrivateUsage / 1024 / 1024.f;
+            constexpr auto kDisplayCount    = 120;
+
+            ImGui::Text("Process Memory: %0.2fMB", private_usage_mb);
+
+            memory_usage_history.emplace_back(private_usage_mb);
+            if(memory_usage_history.size() > kDisplayCount)
+                memory_usage_history.pop_front();
+
+            auto value_getter = [](void* pmemory_usage_history, int i) -> float {
+                auto& muh = *(decltype(&memory_usage_history))pmemory_usage_history;
+                if(i > muh.size() - 1)
+                    return 0.f;
+                return muh[i];
+            };
+
+            // Get the peak working set alligned to power of 2's.
+            int64_t alligned_pws = 0x1000;
+            for(; alligned_pws < pmc.PeakWorkingSetSize / 1024; alligned_pws *= 2)
+                ;
+
+            std::string overlay_text =
+                "Scale: " + std::to_string(alligned_pws / 1024) + "MB";
+
+            ImGui::PlotLines("##WorkingSetGraph",
+                             value_getter,
+                             &memory_usage_history,
+                             kDisplayCount,
+                             0,
+                             overlay_text.c_str(),
+                             0.f,
+                             alligned_pws / 1024.f,
+                             ImVec2(0.f, 70));
+
+            ImGui::Separator();
         }
     }
 
