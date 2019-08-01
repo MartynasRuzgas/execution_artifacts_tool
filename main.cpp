@@ -64,7 +64,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
     }
 
     if(!create_d3d9_device(hwnd)) {
-        MessageBoxA(0, "Failed to d3d9 device.", "EAT - Error", MB_OK);
+        MessageBoxA(0, "Failed to d3d9 create device.", "EAT - Error", MB_OK);
         return 0;
     }
 
