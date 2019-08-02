@@ -26,7 +26,6 @@ SOFTWARE.
 #include <imgui_internal.h>
 
 #include <deque>
-#include <iomanip>
 #include <fstream>
 #include <Psapi.h>
 #include <winuser.h>
