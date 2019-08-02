@@ -10,4 +10,4 @@ The tool showcases the features of the execution_artifacts library available [he
 ![execution_artifacts_tool_2019-08-02_03-20-57](https://user-images.githubusercontent.com/40809800/62335472-9822e180-b4d4-11e9-98e6-a4b66a94d7cc.png)
 
 ### Acknowledgements
-EAT uses the Dear ImGui user interface available [here](https://github.com/ocornut/imgui
+EAT uses the Dear ImGui user interface available [here](https://github.com/ocornut/imgui)
