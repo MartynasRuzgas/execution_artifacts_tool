@@ -35,10 +35,24 @@ SOFTWARE.
 #include <ctime>
 #include <thread>
 #include <chrono>
+#include <locale>
+#include <codecvt>
 
 namespace eat {
 
     namespace detail {
+
+        inline std::string format_wstos(std::wstring& ws)
+        {
+            std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
+            return converter.to_bytes(ws);
+        }
+
+        inline std::string format_wstos(std::wstring_view ws)
+        {
+            std::wstring temp_string(ws.begin(), ws.end());
+            return format_wstos(temp_string);
+        }
 
         inline std::string format_time(int64_t time)
         {
@@ -88,7 +102,7 @@ namespace eat {
 
         ea::enum_runmru(sid, [&](ea::run_mru_t& entries) {
             for(auto& entry : entries) {
-                ss << std::string(entry.begin(), entry.end()).c_str() << std::endl;
+                ss << detail::format_wstos(entry).c_str() << std::endl;
             }
         });
 
@@ -110,7 +124,7 @@ namespace eat {
 
         ea::enum_recentdocsmru(sid, [&](ea::recent_docs_mru_t& entries) {
             for(auto& entry : entries) {
-                ss << std::string(entry.begin(), entry.end()).c_str() << std::endl;
+                ss << detail::format_wstos(entry).c_str() << std::endl;
             }
         });
 
@@ -124,7 +138,7 @@ namespace eat {
         ss << "Dumping AppCompatFlags, Timestamp: " << std::ctime(&now) << std::endl;
 
         ea::enum_app_compat_flag_paths([&](std::wstring_view path) {
-            ss << std::string(path.begin(), path.end()) << std::endl;
+            ss << detail::format_wstos(path).c_str() << std::endl;
         });
 
         return ss.str();
@@ -142,10 +156,9 @@ namespace eat {
         ss << "Dumping MUI Cache, Timestamp: " << std::ctime(&now) << std::endl;
 
         ea::enum_mui_cache(sid, [&](ea::mui_cache_entry&& entry) {
-            ss << "[Path = " << std::string(entry.path.begin(), entry.path.end())
-               << "] [Description = "
-               << std::string(entry.description.begin(), entry.description.end()) << "]"
-               << std::endl;
+            ss << "[Path = " << detail::format_wstos(entry.path).c_str()
+               << "] [Description = " << detail::format_wstos(entry.description).c_str()
+               << "]\n";
         });
 
         return ss.str();
@@ -164,7 +177,7 @@ namespace eat {
                << (entry.last_modification_time.dwLowDateTime
                        ? detail::format_time(last_modification_time)
                        : "Invalid")
-               << "], " << std::string(entry.path.begin(), entry.path.end()) << std::endl;
+               << "], " << detail::format_wstos(entry.path).c_str() << std::endl;
         });
 
         return ss.str();
@@ -185,8 +198,7 @@ namespace eat {
             auto last_access = detail::filetime_to_unix_timestamp(entry.last_access());
             ss << "Launch Count: [" << entry.launch_count() << "], Last Access Time: ["
                << (entry.last_access() ? detail::format_time(last_access) : "Invalid")
-               << "], " << std::string(entry.path().begin(), entry.path().end())
-               << std::endl;
+               << "], " << detail::format_wstos(entry.path()).c_str() << std::endl;
 
             entry.enum_recent_items([&](ea::recent_app::recent_item& item_entry) {
                 auto item_last_access =
@@ -194,9 +206,7 @@ namespace eat {
                 ss << "    Last Acccess Time: ["
                    << (item_entry.last_access() ? detail::format_time(item_last_access)
                                                 : "Invalid")
-                   << "], "
-                   << std::string(item_entry.display_name().begin(),
-                                  item_entry.display_name().end())
+                   << "], " << detail::format_wstos(item_entry.display_name()).c_str()
                    << std::endl;
             });
         });
@@ -224,8 +234,9 @@ namespace eat {
                << "], Last Execution Time: ["
                << (entry.last_execution_time ? detail::format_time(last_execution_time)
                                              : "Invalid")
-               << "], " << std::string(entry.name.begin(), entry.name.end()) << std::endl;
+               << "], " << detail::format_wstos(entry.name).c_str() << std::endl;
         });
+
         return ss.str();
     }
 
@@ -247,8 +258,8 @@ namespace eat {
                 drive_count++;
             });
 
-			// drive_count gets written to in other threads so use a copy.
-			int drive_count_temp = drive_count;
+            // drive_count gets written to in other threads so use a copy.
+            int drive_count_temp = drive_count;
             for(int i = 0; i < drive_count_temp; i++) {
                 std::thread([&, i]() {
                     auto& [stream, drive_index] = sstreams[i];
