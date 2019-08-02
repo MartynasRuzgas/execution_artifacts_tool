@@ -119,8 +119,8 @@ namespace eat {
             static bool        auto_copy_result_to_clipboard = false;
             static bool        dont_display_result           = false;
 
-            auto lmbd_futil_write_result_to_file = [&](bool only_cur_dir = false) {
-                if(!only_cur_dir && !last_save_location.empty()) {
+            auto lmbd_futil_write_result_to_file = [&](bool working_dir = false) {
+                if(!working_dir && !last_save_location.empty()) {
                     std::ofstream fout(last_save_location);
                     if(!fout.is_open())
                         MessageBoxA(hwnd, "Failed to open file.", "EAT - Error", MB_OK);
@@ -183,11 +183,10 @@ namespace eat {
                     }
                     ImGui::EndMenu();
                 }
-                if(ImGui::BeginMenu("About##Menu")) {
-                    show_about = true;
-                    //if(ImGui::MenuItem("About")) {
-                    //    show_about = true;
-                    //}
+                if(ImGui::BeginMenu("Info##Menu")) {
+                    if(ImGui::MenuItem("About")) {
+                        show_about = true;
+                    }
                     ImGui::EndMenu();
                 }
                 ImGui::EndMenuBar();
@@ -226,10 +225,10 @@ namespace eat {
                     ImGui::SameLine();
             };
 
-			if (ImGui::Button("< Clear Screen >")) {
+            if(ImGui::Button("< Clear Screen >")) {
                 input_text_buffer._Tidy_deallocate();
                 input_text_buffer = "Cleared.";
-			}
+            }
             lmbd_futil_wrap_sameline("< Clear Screen >");
 
             { // UsnJournal
