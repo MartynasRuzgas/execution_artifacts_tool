@@ -232,7 +232,7 @@ namespace eat {
     void get_usn_journal_info_deferred(std::string& result, bool& completed)
     {
         // This takes an unreasonably long time without multithreading with
-        // multiple drives are mounted on the system.
+        // multiple drives mounted on the system.
         std::thread([&]() {
             std::stringstream ss;
             auto              now =
