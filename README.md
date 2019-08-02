@@ -1,4 +1,4 @@
-# execution_artifacts_tool (EAT) [![C](https://img.shields.io/badge/language-C++-%23f34b7d.svg)](https://en.wikipedia.org/wiki/C%2B%2B) [![Windows](https://img.shields.io/badge/platform-Windows-0078d7.svg)](https://en.wikipedia.org/wiki/Microsoft_Windows)[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+# execution_artifacts_tool (EAT) [![C](https://img.shields.io/badge/language-C++-%23f34b7d.svg)](https://en.wikipedia.org/wiki/C%2B%2B) [![Windows](https://img.shields.io/badge/platform-Windows-0078d7.svg)](https://en.wikipedia.org/wiki/Microsoft_Windows) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A lightweight, portable digital forensics tool to extract execution/interaction data from system artifacts.
 
