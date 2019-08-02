@@ -247,11 +247,14 @@ namespace eat {
                 drive_count++;
             });
 
-            for(int i = 0; i < drive_count; i++) {
+			// drive_count gets written to in other threads so use a copy.
+			int drive_count_temp = drive_count;
+            for(int i = 0; i < drive_count_temp; i++) {
                 std::thread([&, i]() {
                     auto& [stream, drive_index] = sstreams[i];
                     stream << "NTFS Journal data for drive " << (char)(drive_index + 'A')
                            << ":\\" << std::endl;
+
                     auto status = ea::enum_drive_usn_journal(
                         drive_index, [&](ea::usn_journal_entry_t& entry) {
                             auto interact_time_utf = detail::filetime_to_unix_timestamp(
@@ -266,15 +269,14 @@ namespace eat {
                                 << std::endl;
                         });
 
-					// Error handling
-					if (!NT_SUCCESS(status)) {
+                    // Error handling
+                    if(!NT_SUCCESS(status)) {
                         if(status == STATUS_ACCESS_DENIED)
                             sstreams[i].first
                                 << "Access denied to UsnJournal, try running as administrator.\n";
                         else
-                            sstreams[i].first
-                                << "Unknown error " << status << std::endl;
-					}
+                            sstreams[i].first << "Unknown error " << status << std::endl;
+                    }
 
                     drive_count--;
                 })
