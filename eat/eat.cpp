@@ -31,8 +31,6 @@ SOFTWARE.
 #include <winuser.h>
 #include <VersionHelpers.h>
 
-#pragma comment(lib, "User32.lib")
-
 namespace eat {
 
     void on_initialize()
@@ -119,18 +117,16 @@ namespace eat {
             static bool        dont_display_result           = false;
 
             auto lmbd_futil_write_result_to_file = [&](bool working_dir = false) {
-                if(!working_dir && !last_save_location.empty()) {
-                    std::ofstream fout(last_save_location);
-                    if(!fout.is_open())
-                        MessageBoxA(hwnd, "Failed to open file.", "EAT - Error", MB_OK);
-                    fout << input_text_buffer;
+                std::ofstream fout(!working_dir && !last_save_location.empty()
+                                       ? last_save_location
+                                       : last_artifact_filename + ".txt");
+
+                if(!fout.is_open()) {
+                    MessageBoxA(hwnd, "Failed to open file.", "EAT - Error", MB_OK);
+                    return;
                 }
-                else {
-                    std::ofstream fout(last_artifact_filename + ".txt");
-                    if(!fout.is_open())
-                        MessageBoxA(hwnd, "Failed to open file.", "EAT - Error", MB_OK);
-                    fout << input_text_buffer;
-                }
+
+                fout << input_text_buffer;
             };
 
             // Lambda to be called after we query an artifact.
@@ -298,7 +294,8 @@ namespace eat {
                                       const_cast<char*>(input_text_buffer.c_str()),
                                       input_text_buffer.size(),
                                       ImVec2(-1.f, -1.f),
-                                      ImGuiInputTextFlags_ReadOnly);
+                                      ImGuiInputTextFlags_ReadOnly |
+                                          ImGuiWindowFlags_HorizontalScrollbar);
 
             ImGui::End();
         }
@@ -334,15 +331,11 @@ namespace eat {
 
     void futil_show_about(bool& show_about)
     {
-        ImGui::SetNextWindowSize(ImVec2(580.f, 156.f), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(580.f, 88.f), ImGuiCond_Once);
         if(ImGui::Begin("About##AboutWindow", &show_about, ImGuiWindowFlags_NoCollapse)) {
             ImGui::Text(
                 "An Open-Source, purely C++ Microsoft Windows execution/interaction artifact tool.");
             ImGui::Text("");
-            ImGui::Text("Dear ImGui By Omar Cornut and all dear imgui contributors,");
-            ImGui::Text("Execution Artifacts By Justas Masiulis and Martynas Ruzgas.");
-            ImGui::Text("");
-            ImGui::Text("This software is licensed under the MIT license,");
             if(ImGui::Button("Check out the source code on github!")) {
                 ShellExecuteW(
                     0,
