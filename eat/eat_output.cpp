@@ -97,14 +97,16 @@ namespace eat {
         std::stringstream ss;
         auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         ss << "Dumping RunMRU, Timestamp: " << std::ctime(&now);
-        ss << "Note: Entries are sorted from most recent to least." << std::endl
-           << std::endl;
+        ss << "Note: Entries are sorted from most recent to least.\n\n";
 
-        ea::enum_runmru(sid, [&](ea::run_mru_t& entries) {
-            for(auto& entry : entries) {
-                ss << detail::format_wstos(entry).c_str() << std::endl;
-            }
-        });
+        auto enum_callback = [&](std::wstring& entry) {
+            ss << detail::format_wstos(entry).c_str() << std::endl;
+        };
+
+		NTSTATUS status = STATUS_SUCCESS;
+        if(!NT_SUCCESS(status = ea::enum_runmru(sid, enum_callback))) {
+            ss << "Failed to query, status: 0x" << std::hex << status << std::endl;
+        }
 
         return ss.str();
     }
@@ -119,14 +121,16 @@ namespace eat {
         std::stringstream ss;
         auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         ss << "Dumping RecentDocsMRU, Timestamp: " << std::ctime(&now);
-        ss << "Note: Entries are sorted from most recent to least." << std::endl
-           << std::endl;
+        ss << "Note: Entries are sorted from most recent to least.\n\n";
 
-        ea::enum_recentdocsmru(sid, [&](ea::recent_docs_mru_t& entries) {
-            for(auto& entry : entries) {
-                ss << detail::format_wstos(entry).c_str() << std::endl;
-            }
-        });
+        auto enum_callback = [&](std::wstring& entry) {
+            ss << detail::format_wstos(entry).c_str() << std::endl;
+        };
+
+		NTSTATUS status = STATUS_SUCCESS;
+        if(!NT_SUCCESS(status = ea::enum_recentdocsmru(sid, enum_callback))) {
+            ss << "Failed to query, status: 0x" << std::hex << status << std::endl;
+        }
 
         return ss.str();
     }
@@ -137,9 +141,14 @@ namespace eat {
         auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         ss << "Dumping AppCompatFlags, Timestamp: " << std::ctime(&now) << std::endl;
 
-        ea::enum_app_compat_flag_paths([&](std::wstring_view path) {
+		auto enum_callback = [&](std::wstring_view path) {
             ss << detail::format_wstos(path).c_str() << std::endl;
-        });
+        };
+
+		NTSTATUS status = STATUS_SUCCESS;
+        if(!NT_SUCCESS(status = ea::enum_app_compat_flag_paths(enum_callback))) {
+            ss << "Failed to query, status: 0x" << std::hex << status << std::endl;
+		}
 
         return ss.str();
     }
@@ -155,11 +164,16 @@ namespace eat {
         auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         ss << "Dumping MUI Cache, Timestamp: " << std::ctime(&now) << std::endl;
 
-        ea::enum_mui_cache(sid, [&](ea::mui_cache_entry&& entry) {
+        auto enum_callback = [&](ea::mui_cache_entry&& entry) {
             ss << "[Path = " << detail::format_wstos(entry.path).c_str()
                << "] [Description = " << detail::format_wstos(entry.description).c_str()
                << "]\n";
-        });
+        };
+
+		NTSTATUS status = STATUS_SUCCESS;
+        if(!NT_SUCCESS(status = ea::enum_mui_cache(sid, enum_callback))) {
+            ss << "Failed to query, status: 0x" << std::hex << status << std::endl;
+        }
 
         return ss.str();
     }
@@ -170,7 +184,7 @@ namespace eat {
         auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         ss << "Dumping ShimCache, Timestamp: " << std::ctime(&now) << std::endl;
 
-        ea::enum_shim_cache([&](ea::shim_entry_t& entry) {
+        auto enum_callback = [&](ea::shim_entry_t& entry) {
             auto last_modification_time =
                 detail::filetime_to_unix_timestamp(entry.last_modification_time);
             ss << "Time: ["
@@ -178,7 +192,12 @@ namespace eat {
                        ? detail::format_time(last_modification_time)
                        : "Invalid")
                << "], " << detail::format_wstos(entry.path).c_str() << std::endl;
-        });
+        };
+
+		NTSTATUS status = STATUS_SUCCESS;
+        if(!NT_SUCCESS(status = ea::enum_shim_cache(enum_callback))) {
+            ss << "Failed to query, status: 0x" << std::hex << status << std::endl;
+        }
 
         return ss.str();
     }
@@ -194,7 +213,7 @@ namespace eat {
         auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         ss << "Dumping RecentApps, Timestamp: " << std::ctime(&now) << std::endl;
 
-        ea::enum_recent_apps(sid, [&](ea::recent_app& entry) {
+        auto enum_callback = [&](ea::recent_app& entry) {
             auto last_access = detail::filetime_to_unix_timestamp(entry.last_access());
             ss << "Launch Count: [" << entry.launch_count() << "], Last Access Time: ["
                << (entry.last_access() ? detail::format_time(last_access) : "Invalid")
@@ -209,7 +228,12 @@ namespace eat {
                    << "], " << detail::format_wstos(item_entry.display_name()).c_str()
                    << std::endl;
             });
-        });
+        };
+
+		NTSTATUS status = STATUS_SUCCESS;
+        if(!NT_SUCCESS(status = ea::enum_recent_apps(sid, enum_callback))) {
+            ss << "Failed to query, status: 0x" << std::hex << status << std::endl;
+        }
 
         return ss.str();
     }
@@ -225,7 +249,8 @@ namespace eat {
         auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         ss << "Dumping UserAssist, Timestamp: " << std::ctime(&now) << std::endl;
         ss << "[!] Note: Ran Count may not be 100\% valid." << std::endl;
-        ea::enum_user_assist(sid, [&ss](ea::user_assist_entry_t& entry) {
+
+        auto enum_callback = [&ss](ea::user_assist_entry_t& entry) {
             auto last_execution_time =
                 detail::filetime_to_unix_timestamp(entry.last_execution_time);
             ss << "Ran Count: [" << entry.run_counter << "], Focus Time: ["
@@ -235,7 +260,12 @@ namespace eat {
                << (entry.last_execution_time ? detail::format_time(last_execution_time)
                                              : "Invalid")
                << "], " << detail::format_wstos(entry.name).c_str() << std::endl;
-        });
+        };
+
+		NTSTATUS status = STATUS_SUCCESS;
+        if(!NT_SUCCESS(status = ea::enum_user_assist(sid, enum_callback))) {
+            ss << "Failed to query, status: 0x" << std::hex << status << std::endl;
+        }
 
         return ss.str();
     }
@@ -286,7 +316,7 @@ namespace eat {
                             sstreams[i].first
                                 << "Access denied to UsnJournal, try running as administrator.\n";
                         else
-                            sstreams[i].first << "Unknown error " << status << std::endl;
+                            sstreams[i].first << "Unknown error 0x" << std::hex << status << std::endl;
                     }
 
                     drive_count--;

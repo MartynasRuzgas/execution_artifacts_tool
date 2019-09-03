@@ -120,6 +120,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
             reset_device();
     }
 
+	// Cleanup...
     ImGui_ImplDX9_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();

@@ -33,6 +33,11 @@ SOFTWARE.
 
 namespace eat {
 
+    std::string futil_get_user_save_path(HWND hwnd);
+    void        futil_copy_to_clipboard(HWND hwnd, std::string& data);
+    void        futil_show_about(bool& show_about);
+    void        futil_show_memory_stats(std::deque<float>& memory_usage_history);
+
     void on_initialize()
     {
         ImGuiStyle& style  = ImGui::GetStyle();
@@ -93,11 +98,6 @@ namespace eat {
 
         style.WindowRounding = 0.f;
     }
-
-    std::string futil_get_user_save_path(HWND hwnd);
-    void        futil_copy_to_clipboard(HWND hwnd, std::string& data);
-    void        futil_show_about(bool& show_about);
-    void        futil_show_memory_stats(std::deque<float>& memory_usage_history);
 
     void on_frame(HWND hwnd)
     {
@@ -191,15 +191,16 @@ namespace eat {
             if(show_about)
                 futil_show_about(show_about);
 
-            // Do the memory stats
-            static std::deque<float> memory_usage_history;
-            if(ImGui::TreeNode("Memory Stats")) {
-                futil_show_memory_stats(memory_usage_history);
-                ImGui::TreePop();
+            { // Do the memory stats
+                static std::deque<float> memory_usage_history;
+                if(ImGui::TreeNode("Memory Stats")) {
+                    futil_show_memory_stats(memory_usage_history);
+                    ImGui::TreePop();
+                }
+                else
+                    // Clear the history if we didn't show it.
+                    memory_usage_history.clear();
             }
-            else
-                // Clear the history if we didn't show it.
-                memory_usage_history.clear();
 
             // Do the options menu
             if(ImGui::TreeNode("Options")) {
